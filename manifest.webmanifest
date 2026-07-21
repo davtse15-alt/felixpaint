@@ -1,6 +1,6 @@
 {
-  "name": "Katie Paint",
-  "short_name": "Katie Paint",
+  "name": "Flex Paint",
+  "short_name": "Flex Paint",
   "description": "A joyful, touch-friendly rainbow painting app.",
   "start_url": "./",
   "display": "fullscreen",
