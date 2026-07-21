@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Katie Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
   <main class="app-shell">
@@ -18,6 +18,9 @@
         <span>Katie Paint</span>
       </div>
       <div class="title-actions">
+        <button class="fullscreen-button" id="fullscreenBtn" aria-label="Enter full screen" title="Full screen">
+          <span aria-hidden="true">⛶</span><span class="fullscreen-label">Full screen</span>
+        </button>
         <button class="lock-button" id="lockBtn" aria-pressed="false" aria-label="Turn on Little hands mode">
           <span aria-hidden="true">🔓</span><span class="lock-label">Little hands</span>
         </button>
@@ -133,6 +136,6 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

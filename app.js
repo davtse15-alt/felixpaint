@@ -436,6 +436,38 @@
     }
   }
 
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function updateFullscreenButton() {
+    const button = $('#fullscreenBtn');
+    const active = Boolean(fullscreenElement());
+    button.querySelector('[aria-hidden="true"]').textContent = active ? '↙' : '⛶';
+    button.querySelector('.fullscreen-label').textContent = active ? 'Exit full screen' : 'Full screen';
+    button.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
+    button.title = active ? 'Exit full screen' : 'Full screen';
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (fullscreenElement()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+        return;
+      }
+      const root = document.documentElement;
+      const request = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (!request) {
+        showToast('On iPhone: Share → Add to Home Screen');
+        return;
+      }
+      await request.call(root);
+    } catch (_) {
+      showToast('Use Share → Add to Home Screen for full screen');
+    }
+  }
+
   function setupUI() {
     $$('.tool').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
     $$('.mode').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
@@ -458,6 +490,10 @@
     $('#solidColor').addEventListener('input', event => { state.solid = event.target.value; syncSpectrumFromSolid(); setMode('solid'); });
     $('#repeatRange').addEventListener('input', event => { state.repeat = Number(event.target.value); });
     $('#colorPanelBtn').addEventListener('click', () => toggleColorPanel());
+    $('#fullscreenBtn').addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+    updateFullscreenButton();
 
     bindSpectrumDrag($('#spectrumField'), (x, y) => {
       state.spectrum.h = x * 360;

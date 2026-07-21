@@ -22,11 +22,13 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px #bfc2cc; }
 .title-actions { display: flex; align-items: center; gap: 7px; }
 .quick-actions { display: flex; align-items: center; gap: 5px; }
-.icon-button, .clear-button, .mini-button, .lock-button { border: 1px solid transparent; background: transparent; border-radius: 9px; min-height: 42px; }
+.icon-button, .clear-button, .mini-button, .lock-button, .fullscreen-button { border: 1px solid transparent; background: transparent; border-radius: 9px; min-height: 42px; }
 .icon-button { width: 46px; font-size: 26px; line-height: 1; }
 .icon-button:disabled { opacity: .3; }
 .clear-button { padding: 0 16px; background: #fff; border-color: #d7dae4; font-size: 13px; }
 .lock-button { position: relative; overflow: hidden; min-width: 124px; padding: 0 13px; border-color: #bfd4f7; background: #edf5ff; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 13px; font-weight: 600; }
+.fullscreen-button { min-width: 108px; padding: 0 12px; border-color: #d6d9e2; background: #fff; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 13px; }
+.fullscreen-button > span:first-child { font-size: 20px; line-height: 1; }
 .lock-button > * { position: relative; z-index: 1; }
 .lock-button.holding::after { content: ""; position: absolute; inset: 0; right: 100%; background: #cde2ff; animation: unlock-fill 1.5s linear forwards; }
 @keyframes unlock-fill { to { right: 0; } }
@@ -108,6 +110,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .app-shell.locked { grid-template-rows: 52px 1fr; }
 .app-shell.locked .ribbon, .app-shell.locked .statusbar, .app-shell.locked .quick-actions { display: none; }
 .app-shell.locked .lock-button { min-width: 148px; border-color: #9dbff1; background: #e5f0ff; }
+.app-shell.locked .fullscreen-button { display: none; }
 .app-shell.locked .canvas-stage { grid-row: 2; padding: 10px; }
 .app-shell.locked .canvas-frame { width: min(100%, calc((100dvh - 72px) * 16 / 9)); }
 .app-shell.locked .lock-badge { display: block; }
@@ -135,8 +138,51 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .clear-button::after { content: "＋"; font-size: 22px; }
   .lock-button { min-width: 52px; padding: 0 12px; }
   .lock-button .lock-label { display: none; }
+  .fullscreen-button { min-width: 52px; padding: 0 12px; }
+  .fullscreen-button .fullscreen-label { display: none; }
   .app-shell.locked .lock-button { min-width: 132px; }
   .app-shell.locked .lock-button .lock-label { display: inline; }
+}
+
+@media (max-width: 560px) {
+  .app-shell { grid-template-rows: 48px auto 1fr; }
+  .titlebar { padding-left: max(7px, env(safe-area-inset-left)); padding-right: max(7px, env(safe-area-inset-right)); }
+  .brand > span:last-child { display: none; }
+  .brand-mark { width: 36px; height: 36px; }
+  .title-actions { gap: 3px; }
+  .quick-actions { gap: 2px; }
+  .icon-button { width: 40px; }
+  .clear-button { width: 40px; padding: 0; }
+  .fullscreen-button, .lock-button { min-width: 44px; width: 44px; padding: 0; }
+  .ribbon { min-height: 90px; padding: 6px 7px; scroll-snap-type: x proximity; }
+  .tool-group { scroll-snap-align: start; }
+  .tool { width: 62px; height: 76px; }
+  .size-group { width: 116px; }
+  .paint-group { width: 238px; }
+  .symmetry-group { width: 154px; }
+  .divider { margin-inline: 1px; }
+  .color-panel { top: 138px; width: calc(100vw - 14px); max-height: calc(100dvh - 146px); padding: 12px; grid-template-columns: minmax(0, 1fr); gap: 12px; overflow-y: auto; overscroll-behavior: contain; }
+  .panel-section { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .panel-section:last-child { border-bottom: 0; }
+  .spectrum-picker { grid-template-columns: minmax(0, 1fr) 36px; height: 190px; }
+  .basic-colors { grid-template-columns: repeat(6, 36px); }
+  .quick-color { width: 36px; height: 32px; }
+  .stop-editor { flex-wrap: wrap; }
+  .canvas-stage { padding: 12px 7px; place-items: start center; }
+  .canvas-frame { width: 100%; max-height: calc(100dvh - 158px); }
+  .statusbar { display: none; }
+  .lock-badge { top: 7px; right: 8px; }
+}
+
+@media (max-width: 380px) {
+  .icon-button { width: 36px; }
+  .fullscreen-button, .lock-button, .clear-button { width: 40px; min-width: 40px; }
+  .basic-colors { grid-template-columns: repeat(6, 32px); }
+  .quick-color { width: 32px; }
+}
+
+@media (display-mode: fullscreen), (display-mode: standalone) {
+  .fullscreen-button { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
