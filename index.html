@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#f7f7fb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Katie Paint</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="titlebar">
+      <div class="brand" aria-label="Katie Paint">
+        <span class="brand-mark" aria-hidden="true">🎨</span>
+        <span>Katie Paint</span>
+      </div>
+      <div class="title-actions">
+        <button class="lock-button" id="lockBtn" aria-pressed="false" aria-label="Turn on Little hands mode">
+          <span aria-hidden="true">🔓</span><span class="lock-label">Little hands</span>
+        </button>
+        <nav class="quick-actions" aria-label="History">
+          <button class="icon-button" id="undoBtn" title="Undo" aria-label="Undo" disabled>↶</button>
+          <button class="icon-button" id="redoBtn" title="Redo" aria-label="Redo" disabled>↷</button>
+          <button class="clear-button" id="clearBtn" title="Clear the canvas">New picture</button>
+        </nav>
+      </div>
+    </header>
+
+    <section class="ribbon" aria-label="Drawing controls">
+      <div class="tool-group tools" aria-label="Tools">
+        <button class="tool active" data-tool="brush" aria-pressed="true"><span>🖌️</span><small>Brush</small></button>
+        <button class="tool" data-tool="pencil" aria-pressed="false"><span>✏️</span><small>Pencil</small></button>
+        <button class="tool" data-tool="line" aria-pressed="false"><span class="line-icon">╱</span><small>Line</small></button>
+        <button class="tool" data-tool="eraser" aria-pressed="false"><span>◫</span><small>Eraser</small></button>
+        <button class="tool" data-tool="picker" aria-pressed="false"><span>💧</span><small>Picker</small></button>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div class="tool-group size-group">
+        <label for="sizeRange">Size <output id="sizeOutput">18</output></label>
+        <input id="sizeRange" type="range" min="2" max="72" value="18" />
+        <div class="size-preview"><span id="sizePreview"></span></div>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div class="tool-group paint-group">
+        <div class="mode-tabs" role="group" aria-label="Color mode">
+          <button class="mode active" data-mode="solid" aria-pressed="true">Solid</button>
+          <button class="mode" data-mode="gradient" aria-pressed="false">Gradient</button>
+          <button class="mode rainbow-mode" data-mode="rainbow" aria-pressed="false">Rainbow</button>
+        </div>
+        <button class="color-summary" id="colorPanelBtn" aria-expanded="false" aria-controls="colorPanel">
+          <span class="color-swatch" id="activeSwatch"></span>
+          <span id="colorSummaryText">Choose color</span>
+          <span aria-hidden="true">⌄</span>
+        </button>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div class="tool-group symmetry-group">
+        <span class="group-label">Symmetry</span>
+        <div class="segmented" role="group" aria-label="Symmetry mode">
+          <button class="sym active" data-symmetry="none" aria-pressed="true">Off</button>
+          <button class="sym" data-symmetry="vertical" aria-pressed="false">↔</button>
+          <button class="sym" data-symmetry="quad" aria-pressed="false">✣</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="color-panel" id="colorPanel" hidden>
+      <div class="panel-section solid-picker-section">
+        <span class="panel-label">Drag to pick a color</span>
+        <div class="spectrum-picker">
+          <div class="spectrum-field" id="spectrumField" role="slider" tabindex="0" aria-label="Rainbow color field" aria-valuetext="Blue">
+            <span class="spectrum-thumb" id="spectrumThumb"></span>
+          </div>
+          <div class="brightness-track" id="brightnessTrack" role="slider" tabindex="0" aria-label="Color brightness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="88">
+            <span class="brightness-thumb" id="brightnessThumb"></span>
+          </div>
+        </div>
+        <span class="panel-label quick-label">Quick colors</span>
+        <input type="color" id="solidColor" value="#3478f6" aria-label="Choose a color" />
+        <div class="basic-colors" id="basicColors" aria-label="Quick colors"></div>
+      </div>
+
+      <div class="panel-section gradient-section">
+        <span class="panel-label">My colors <small>tap to edit</small></span>
+        <div class="stop-editor" id="stopEditor"></div>
+        <button class="mini-button" id="addStopBtn">＋ Color</button>
+        <button class="mini-button" id="reverseBtn">⇄ Reverse</button>
+      </div>
+
+      <div class="panel-section gradient-section">
+        <span class="panel-label">Style</span>
+        <div class="segmented compact" role="group" aria-label="Gradient style">
+          <button class="style active" data-style="smooth" aria-pressed="true">Smooth</button>
+          <button class="style" data-style="bands" aria-pressed="false">Bands</button>
+        </div>
+        <label class="repeat-control">Repeat
+          <input id="repeatRange" type="range" min="40" max="500" value="180" />
+        </label>
+      </div>
+
+      <div class="panel-section presets-section">
+        <span class="panel-label">Happy palettes</span>
+        <div class="presets" id="presets"></div>
+        <button class="mini-button" id="savePresetBtn">♡ Save mine</button>
+      </div>
+    </section>
+
+    <section class="canvas-stage" id="canvasStage">
+      <div class="lock-badge" id="lockBadge" aria-hidden="true">🔒 Little hands mode</div>
+      <div class="canvas-frame" id="canvasFrame">
+        <canvas id="paintCanvas" width="1280" height="720" aria-label="Drawing canvas"></canvas>
+        <canvas id="guideCanvas" width="1280" height="720" aria-hidden="true"></canvas>
+        <div class="empty-hint" id="emptyHint">
+          <span>Draw something wonderful!</span>
+          <small>Use a finger, pencil, or mouse</small>
+        </div>
+      </div>
+    </section>
+
+    <footer class="statusbar">
+      <span id="statusText">Brush · Solid</span>
+      <span>16:9 canvas</span>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js?v=4"></script>
+</body>
+</html>
