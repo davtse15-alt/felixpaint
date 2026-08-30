@@ -36,9 +36,17 @@
       <div class="tool-group tools" aria-label="Tools">
         <button class="tool active" data-tool="brush" aria-pressed="true"><span>🖌️</span><small>Brush</small></button>
         <button class="tool" data-tool="pencil" aria-pressed="false"><span>✏️</span><small>Pencil</small></button>
-        <button class="tool" data-tool="line" aria-pressed="false"><span class="line-icon">╱</span><small>Line</small></button>
         <button class="tool" data-tool="eraser" aria-pressed="false"><span>◫</span><small>Eraser</small></button>
-        <button class="tool" data-tool="picker" aria-pressed="false"><span>💧</span><small>Picker</small></button>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div class="tool-group stamp-group" role="group" aria-label="Picture stamps">
+        <span class="group-label">Stamps</span>
+        <button class="stamp" data-stamp="🥁" aria-pressed="false" aria-label="Place a drum">🥁</button>
+        <button class="stamp" data-stamp="🎵" aria-pressed="false" aria-label="Place a music note">🎵</button>
+        <button class="stamp" data-stamp="⭐" aria-pressed="false" aria-label="Place a star">⭐</button>
+        <button class="stamp" data-stamp="🌈" aria-pressed="false" aria-label="Place a rainbow">🌈</button>
       </div>
 
       <div class="divider" aria-hidden="true"></div>
@@ -68,10 +76,12 @@
 
       <div class="tool-group symmetry-group">
         <span class="group-label">Symmetry</span>
-        <div class="segmented" role="group" aria-label="Symmetry mode">
+        <div class="segmented symmetry-options" role="group" aria-label="Symmetry mode">
           <button class="sym active" data-symmetry="none" aria-pressed="true">Off</button>
           <button class="sym" data-symmetry="vertical" aria-pressed="false">↔</button>
+          <button class="sym" data-symmetry="horizontal" aria-pressed="false">↕</button>
           <button class="sym" data-symmetry="quad" aria-pressed="false">✣</button>
+          <button class="sym" data-symmetry="eight" aria-pressed="false">✺</button>
         </div>
       </div>
     </section>
