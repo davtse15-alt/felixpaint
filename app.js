@@ -11,6 +11,7 @@
 
   const state = {
     tool: 'brush',
+    stamp: null,
     mode: 'solid',
     size: 18,
     solid: '#3478f6',
@@ -26,7 +27,6 @@
     start: null,
     last: null,
     distance: 0,
-    lineBase: null,
     undo: [],
     redo: [],
     hasDrawn: false
@@ -40,7 +40,12 @@
     { name: 'Dinosaur', colors: ['#31572c', '#4f772d', '#90a955', '#ecf39e'] },
     { name: 'Space', colors: ['#11133c', '#46207a', '#9348c7', '#ff7cc8'] }
   ];
-  const quickColors = ['#111111', '#ffffff', '#ed3349', '#ff8a24', '#ffd43b', '#42bd62', '#19bfc4', '#3478f6', '#684bd9', '#d448c2', '#8b5b3e', '#89909d'];
+  const quickColors = [
+    '#111111', '#ffffff', '#ed3349', '#ff8a24', '#ffd43b',
+    '#42bd62', '#19bfc4', '#3478f6', '#684bd9', '#d448c2',
+    '#8b5b3e', '#89909d', '#65c8ff', '#1d4f91', '#9eea5d',
+    '#147f55', '#ffbd91', '#ff7898', '#7b465e', '#d6b58c'
+  ];
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -120,12 +125,28 @@
   }
 
   function mirroredPairs(from, to) {
+    if (state.symmetry === 'eight') {
+      const rotate = (point, angle) => {
+        const x = (point.x - W / 2) / W;
+        const y = (point.y - H / 2) / H;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        return { x: W / 2 + (x * cos - y * sin) * W, y: H / 2 + (x * sin + y * cos) * H };
+      };
+      return Array.from({ length: 8 }, (_, index) => {
+        const angle = index * Math.PI / 4;
+        return [rotate(from, angle), rotate(to, angle)];
+      });
+    }
+
     const pairs = [[from, to]];
     if (state.symmetry === 'vertical' || state.symmetry === 'quad') {
       pairs.push([{ x: W - from.x, y: from.y }, { x: W - to.x, y: to.y }]);
     }
-    if (state.symmetry === 'quad') {
+    if (state.symmetry === 'horizontal' || state.symmetry === 'quad') {
       pairs.push([{ x: from.x, y: H - from.y }, { x: to.x, y: H - to.y }]);
+    }
+    if (state.symmetry === 'quad') {
       pairs.push([{ x: W - from.x, y: H - from.y }, { x: W - to.x, y: H - to.y }]);
     }
     return pairs;
@@ -162,6 +183,16 @@
     mirroredPairs(from, to).forEach(pair => drawColoredSegment(pair[0], pair[1], distanceStart, width, state.tool === 'eraser'));
   }
 
+  function drawStamp(point) {
+    const size = Math.max(46, Math.min(132, state.size * 3));
+    ctx.save();
+    ctx.font = `${size}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(state.stamp, point.x, point.y);
+    ctx.restore();
+  }
+
   function beginHistory() {
     state.undo.push(ctx.getImageData(0, 0, W, H));
     if (state.undo.length > 16) state.undo.shift();
@@ -188,14 +219,12 @@
     frame.setPointerCapture?.(event.pointerId);
     const point = pointFromEvent(event);
 
-    if (state.tool === 'picker') {
-      const pixel = ctx.getImageData(Math.floor(point.x), Math.floor(point.y), 1, 1).data;
-      state.solid = pixel[3] ? rgbToHex(pixel[0], pixel[1], pixel[2]) : '#ffffff';
-      $('#solidColor').value = state.solid;
-      syncSpectrumFromSolid();
-      setMode('solid');
-      updateColorUI();
-      showToast('Color picked');
+    if (state.stamp) {
+      beginHistory();
+      drawStamp(point);
+      state.hasDrawn = true;
+      $('#emptyHint').classList.add('hidden');
+      updateHistoryButtons();
       return;
     }
 
@@ -206,8 +235,7 @@
     state.start = point;
     state.last = point;
     state.distance = 0;
-    if (state.tool === 'line') state.lineBase = ctx.getImageData(0, 0, W, H);
-    else drawAll(point, point, 0);
+    drawAll(point, point, 0);
     state.hasDrawn = true;
     $('#emptyHint').classList.add('hidden');
   }
@@ -217,35 +245,42 @@
     event.preventDefault();
     const point = pointFromEvent(event);
     state.moved = true;
-    if (state.tool === 'line') {
-      ctx.putImageData(state.lineBase, 0, 0);
-      drawAll(state.start, point, 0);
-    } else {
-      drawAll(state.last, point, state.distance);
-      state.distance += Math.hypot(point.x - state.last.x, point.y - state.last.y);
-    }
+    drawAll(state.last, point, state.distance);
+    state.distance += Math.hypot(point.x - state.last.x, point.y - state.last.y);
     state.last = point;
   }
 
   function onPointerUp(event) {
     if (!state.drawing || event.pointerId !== state.activePointerId) return;
     event.preventDefault();
-    if (state.tool === 'line' && !state.moved) drawAll(state.start, state.start, 0);
     state.drawing = false;
     state.activePointerId = null;
-    state.lineBase = null;
     updateHistoryButtons();
   }
 
   function setTool(tool) {
     state.tool = tool;
+    state.stamp = null;
     $$('.tool').forEach(button => {
       const active = button.dataset.tool === tool;
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', active);
     });
-    frame.style.cursor = tool === 'picker' ? 'copy' : tool === 'eraser' ? 'cell' : 'crosshair';
+    $$('.stamp').forEach(button => button.setAttribute('aria-pressed', 'false'));
+    frame.style.cursor = tool === 'eraser' ? 'cell' : 'crosshair';
     updateStatus();
+  }
+
+  function setStamp(stamp) {
+    state.stamp = stamp;
+    $$('.tool').forEach(button => {
+      button.classList.remove('active');
+      button.setAttribute('aria-pressed', 'false');
+    });
+    $$('.stamp').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.stamp === stamp)));
+    frame.style.cursor = 'copy';
+    updateStatus();
+    showToast(`${stamp} stamp ready`);
   }
 
   function setMode(mode) {
@@ -267,7 +302,13 @@
       button.setAttribute('aria-pressed', active);
     });
     drawGuides();
-    if (symmetry !== 'none') showToast(symmetry === 'vertical' ? 'Mirror drawing on' : 'Four-way drawing on');
+    const names = {
+      vertical: 'Side-to-side mirror on',
+      horizontal: 'Top-to-bottom mirror on',
+      quad: 'Four-way symmetry on',
+      eight: 'Eight-way kaleidoscope on'
+    };
+    if (names[symmetry]) showToast(names[symmetry]);
   }
 
   function drawGuides() {
@@ -278,8 +319,16 @@
     gtx.lineWidth = 2;
     gtx.strokeStyle = 'rgba(70, 91, 130, .28)';
     gtx.beginPath();
-    gtx.moveTo(W / 2, 0); gtx.lineTo(W / 2, H);
-    if (state.symmetry === 'quad') { gtx.moveTo(0, H / 2); gtx.lineTo(W, H / 2); }
+    if (state.symmetry === 'vertical' || state.symmetry === 'quad' || state.symmetry === 'eight') {
+      gtx.moveTo(W / 2, 0); gtx.lineTo(W / 2, H);
+    }
+    if (state.symmetry === 'horizontal' || state.symmetry === 'quad' || state.symmetry === 'eight') {
+      gtx.moveTo(0, H / 2); gtx.lineTo(W, H / 2);
+    }
+    if (state.symmetry === 'eight') {
+      gtx.moveTo(0, 0); gtx.lineTo(W, H);
+      gtx.moveTo(W, 0); gtx.lineTo(0, H);
+    }
     gtx.stroke();
     gtx.restore();
   }
@@ -398,7 +447,7 @@
   }
 
   function updateStatus() {
-    const tool = state.tool[0].toUpperCase() + state.tool.slice(1);
+    const tool = state.stamp ? `${state.stamp} Stamp` : state.tool[0].toUpperCase() + state.tool.slice(1);
     const mode = state.mode[0].toUpperCase() + state.mode.slice(1);
     $('#statusText').textContent = `${tool} · ${mode}${state.symmetry === 'none' ? '' : ' · Symmetry'}`;
   }
@@ -436,8 +485,41 @@
     }
   }
 
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function updateFullscreenButton() {
+    const button = $('#fullscreenBtn');
+    const active = Boolean(fullscreenElement());
+    button.querySelector('[aria-hidden="true"]').textContent = active ? '↙' : '⛶';
+    button.querySelector('.fullscreen-label').textContent = active ? 'Exit full screen' : 'Full screen';
+    button.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
+    button.title = active ? 'Exit full screen' : 'Full screen';
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (fullscreenElement()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+        return;
+      }
+      const root = document.documentElement;
+      const request = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (!request) {
+        showToast('On iPhone: Share → Add to Home Screen');
+        return;
+      }
+      await request.call(root);
+    } catch (_) {
+      showToast('Use Share → Add to Home Screen for full screen');
+    }
+  }
+
   function setupUI() {
     $$('.tool').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
+    $$('.stamp').forEach(button => button.addEventListener('click', () => setStamp(button.dataset.stamp)));
     $$('.mode').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
     $$('.sym').forEach(button => button.addEventListener('click', () => setSymmetry(button.dataset.symmetry)));
     $$('.style').forEach(button => button.addEventListener('click', () => {
@@ -458,6 +540,10 @@
     $('#solidColor').addEventListener('input', event => { state.solid = event.target.value; syncSpectrumFromSolid(); setMode('solid'); });
     $('#repeatRange').addEventListener('input', event => { state.repeat = Number(event.target.value); });
     $('#colorPanelBtn').addEventListener('click', () => toggleColorPanel());
+    $('#fullscreenBtn').addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+    updateFullscreenButton();
 
     bindSpectrumDrag($('#spectrumField'), (x, y) => {
       state.spectrum.h = x * 360;

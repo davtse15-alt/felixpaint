@@ -6,18 +6,21 @@
   <meta name="theme-color" content="#f7f7fb" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Katie Paint</title>
+  <title>Flex Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body>
   <main class="app-shell">
     <header class="titlebar">
-      <div class="brand" aria-label="Katie Paint">
+      <div class="brand" aria-label="Flex Paint">
         <span class="brand-mark" aria-hidden="true">🎨</span>
-        <span>Katie Paint</span>
+        <span>Flex Paint</span>
       </div>
       <div class="title-actions">
+        <button class="fullscreen-button" id="fullscreenBtn" aria-label="Enter full screen" title="Full screen">
+          <span aria-hidden="true">⛶</span><span class="fullscreen-label">Full screen</span>
+        </button>
         <button class="lock-button" id="lockBtn" aria-pressed="false" aria-label="Turn on Little hands mode">
           <span aria-hidden="true">🔓</span><span class="lock-label">Little hands</span>
         </button>
@@ -33,9 +36,17 @@
       <div class="tool-group tools" aria-label="Tools">
         <button class="tool active" data-tool="brush" aria-pressed="true"><span>🖌️</span><small>Brush</small></button>
         <button class="tool" data-tool="pencil" aria-pressed="false"><span>✏️</span><small>Pencil</small></button>
-        <button class="tool" data-tool="line" aria-pressed="false"><span class="line-icon">╱</span><small>Line</small></button>
         <button class="tool" data-tool="eraser" aria-pressed="false"><span>◫</span><small>Eraser</small></button>
-        <button class="tool" data-tool="picker" aria-pressed="false"><span>💧</span><small>Picker</small></button>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div class="tool-group stamp-group" role="group" aria-label="Picture stamps">
+        <span class="group-label">Stamps</span>
+        <button class="stamp" data-stamp="🥁" aria-pressed="false" aria-label="Place a drum">🥁</button>
+        <button class="stamp" data-stamp="🎵" aria-pressed="false" aria-label="Place a music note">🎵</button>
+        <button class="stamp" data-stamp="⭐" aria-pressed="false" aria-label="Place a star">⭐</button>
+        <button class="stamp" data-stamp="🌈" aria-pressed="false" aria-label="Place a rainbow">🌈</button>
       </div>
 
       <div class="divider" aria-hidden="true"></div>
@@ -65,10 +76,12 @@
 
       <div class="tool-group symmetry-group">
         <span class="group-label">Symmetry</span>
-        <div class="segmented" role="group" aria-label="Symmetry mode">
+        <div class="segmented symmetry-options" role="group" aria-label="Symmetry mode">
           <button class="sym active" data-symmetry="none" aria-pressed="true">Off</button>
           <button class="sym" data-symmetry="vertical" aria-pressed="false">↔</button>
+          <button class="sym" data-symmetry="horizontal" aria-pressed="false">↕</button>
           <button class="sym" data-symmetry="quad" aria-pressed="false">✣</button>
+          <button class="sym" data-symmetry="eight" aria-pressed="false">✺</button>
         </div>
       </div>
     </section>
@@ -133,6 +146,6 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
