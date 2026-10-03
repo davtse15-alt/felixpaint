@@ -29,7 +29,11 @@
     distance: 0,
     undo: [],
     redo: [],
-    hasDrawn: false
+    hasDrawn: false,
+    appMode: 'paint',
+    traceItem: 'A',
+    modeSnapshots: { paint: null, learn: null },
+    modeHasDrawn: { paint: false, learn: false }
   };
 
   const presets = [
@@ -313,6 +317,22 @@
 
   function drawGuides() {
     gtx.clearRect(0, 0, W, H);
+    if (state.appMode === 'learn') {
+      gtx.save();
+      gtx.textAlign = 'center';
+      gtx.textBaseline = 'middle';
+      gtx.font = '600 470px "Arial Rounded MT Bold", "Trebuchet MS", sans-serif';
+      gtx.lineWidth = 13;
+      gtx.lineJoin = 'round';
+      gtx.setLineDash([5, 15]);
+      gtx.strokeStyle = 'rgba(69, 130, 214, .56)';
+      gtx.strokeText(state.traceItem, W / 2, H / 2 + 5);
+      gtx.setLineDash([]);
+      gtx.fillStyle = 'rgba(69, 130, 214, .14)';
+      gtx.fillText(state.traceItem, W / 2, H / 2 + 5);
+      gtx.restore();
+      return;
+    }
     if (state.symmetry === 'none') return;
     gtx.save();
     gtx.setLineDash([10, 12]);
@@ -449,7 +469,42 @@
   function updateStatus() {
     const tool = state.stamp ? `${state.stamp} Stamp` : state.tool[0].toUpperCase() + state.tool.slice(1);
     const mode = state.mode[0].toUpperCase() + state.mode.slice(1);
-    $('#statusText').textContent = `${tool} · ${mode}${state.symmetry === 'none' ? '' : ' · Symmetry'}`;
+    $('#statusText').textContent = state.appMode === 'learn' ? `Learning · ${state.traceItem}` : `${tool} · ${mode}${state.symmetry === 'none' ? '' : ' · Symmetry'}`;
+  }
+
+  function setAppMode(mode) {
+    if (mode === state.appMode) return;
+    state.modeSnapshots[state.appMode] = ctx.getImageData(0, 0, W, H);
+    state.modeHasDrawn[state.appMode] = state.hasDrawn;
+    ctx.clearRect(0, 0, W, H);
+    const saved = state.modeSnapshots[mode];
+    if (saved) ctx.putImageData(saved, 0, 0);
+    state.hasDrawn = state.modeHasDrawn[mode];
+    state.undo = [];
+    state.redo = [];
+    updateHistoryButtons();
+    state.appMode = mode;
+    $('.app-shell').classList.toggle('learning', mode === 'learn');
+    $('.paint-ribbon').hidden = mode === 'learn';
+    $('.learn-ribbon').hidden = mode !== 'learn';
+    $$('.app-mode').forEach(button => {
+      const active = button.dataset.appMode === mode;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active);
+    });
+    $('#emptyHint').classList.toggle('hidden', mode === 'learn' || !state.hasDrawn);
+    toggleColorPanel(false);
+    drawGuides();
+    updateStatus();
+  }
+
+  function clearTrace() {
+    if (state.hasDrawn) beginHistory();
+    ctx.clearRect(0, 0, W, H);
+    state.hasDrawn = false;
+    state.modeHasDrawn[state.appMode] = false;
+    $('#emptyHint').classList.add('hidden');
+    updateHistoryButtons();
   }
 
   let toastTimer;
@@ -518,6 +573,24 @@
   }
 
   function setupUI() {
+    $$('.app-mode').forEach(button => button.addEventListener('click', () => setAppMode(button.dataset.appMode)));
+    const traceItems = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'0123456789'];
+    const traceSelect = $('#traceItem');
+    traceItems.forEach((item, index) => {
+      if (index === 0 || index === 26) {
+        const group = document.createElement('optgroup');
+        group.label = index === 0 ? 'U.S. alphabet · uppercase' : 'U.S. numbers';
+        traceSelect.append(group);
+      }
+      const option = document.createElement('option');
+      option.value = item;
+      option.textContent = item;
+      traceSelect.lastElementChild.append(option);
+    });
+    traceSelect.addEventListener('change', () => { state.traceItem = traceSelect.value; clearTrace(); drawGuides(); updateStatus(); });
+    $('#previousItem').addEventListener('click', () => moveTraceItem(-1));
+    $('#nextItem').addEventListener('click', () => moveTraceItem(1));
+    $('#clearTrace').addEventListener('click', clearTrace);
     $$('.tool').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
     $$('.stamp').forEach(button => button.addEventListener('click', () => setStamp(button.dataset.stamp)));
     $$('.mode').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
@@ -651,6 +724,7 @@
       beginHistory();
       ctx.clearRect(0, 0, W, H);
       state.hasDrawn = false;
+      state.modeHasDrawn[state.appMode] = false;
       $('#emptyHint').classList.remove('hidden');
       showToast('Fresh canvas');
     });
@@ -661,6 +735,16 @@
     document.addEventListener('keydown', event => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); (event.shiftKey ? $('#redoBtn') : $('#undoBtn')).click(); }
     });
+  }
+
+  function moveTraceItem(direction) {
+    const items = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'0123456789'];
+    const index = (items.indexOf(state.traceItem) + direction + items.length) % items.length;
+    state.traceItem = items[index];
+    $('#traceItem').value = state.traceItem;
+    clearTrace();
+    drawGuides();
+    updateStatus();
   }
 
   frame.addEventListener('pointerdown', onPointerDown);

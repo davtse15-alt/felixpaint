@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Flex Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
 </head>
 <body>
   <main class="app-shell">
@@ -16,6 +16,10 @@
       <div class="brand" aria-label="Flex Paint">
         <span class="brand-mark" aria-hidden="true">🎨</span>
         <span>Flex Paint</span>
+      </div>
+      <div class="app-modes" role="group" aria-label="App mode">
+        <button class="app-mode active" data-app-mode="paint" aria-pressed="true">🎨 Paint</button>
+        <button class="app-mode" data-app-mode="learn" aria-pressed="false">📚 Learn</button>
       </div>
       <div class="title-actions">
         <button class="fullscreen-button" id="fullscreenBtn" aria-label="Enter full screen" title="Full screen">
@@ -32,7 +36,7 @@
       </div>
     </header>
 
-    <section class="ribbon" aria-label="Drawing controls">
+    <section class="ribbon paint-ribbon" aria-label="Drawing controls">
       <div class="tool-group tools" aria-label="Tools">
         <button class="tool active" data-tool="brush" aria-pressed="true"><span>🖌️</span><small>Brush</small></button>
         <button class="tool" data-tool="pencil" aria-pressed="false"><span>✏️</span><small>Pencil</small></button>
@@ -86,6 +90,17 @@
       </div>
     </section>
 
+    <section class="ribbon learn-ribbon" aria-label="Learning controls" hidden>
+      <div class="learn-controls">
+        <label for="traceItem">Trace a letter or number</label>
+        <select id="traceItem" aria-label="Choose a U.S. letter or number"></select>
+        <button class="learn-nav" id="previousItem" aria-label="Previous letter or number">←</button>
+        <button class="learn-nav" id="nextItem" aria-label="Next letter or number">→</button>
+        <button class="clear-button" id="clearTrace">Try again</button>
+        <span class="learn-tip">Follow the dotted lines with your finger or a stylus.</span>
+      </div>
+    </section>
+
     <section class="color-panel" id="colorPanel" hidden>
       <div class="panel-section solid-picker-section">
         <span class="panel-label">Drag to pick a color</span>
@@ -130,8 +145,8 @@
     <section class="canvas-stage" id="canvasStage">
       <div class="lock-badge" id="lockBadge" aria-hidden="true">🔒 Little hands mode</div>
       <div class="canvas-frame" id="canvasFrame">
-        <canvas id="paintCanvas" width="1280" height="720" aria-label="Drawing canvas"></canvas>
         <canvas id="guideCanvas" width="1280" height="720" aria-hidden="true"></canvas>
+        <canvas id="paintCanvas" width="1280" height="720" aria-label="Drawing canvas"></canvas>
         <div class="empty-hint" id="emptyHint">
           <span>Draw something wonderful!</span>
           <small>Use a finger, pencil, or mouse</small>
@@ -146,6 +161,6 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

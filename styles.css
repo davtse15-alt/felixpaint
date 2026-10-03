@@ -20,6 +20,9 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .titlebar { display: flex; align-items: center; justify-content: space-between; padding: max(7px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 6px max(14px, env(safe-area-inset-left)); border-bottom: 1px solid var(--line); background: rgba(250,250,253,.9); }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 650; letter-spacing: -.2px; }
 .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px #bfc2cc; }
+.app-modes { display: flex; gap: 4px; padding: 3px; border: 1px solid #d9dce5; border-radius: 11px; background: #f0f1f6; }
+.app-mode { min-height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: 8px; background: transparent; font-size: 13px; font-weight: 600; }
+.app-mode.active { border-color: #a9c9fb; background: white; color: #075ecc; box-shadow: 0 1px 3px rgba(20,50,90,.12); }
 .title-actions { display: flex; align-items: center; gap: 7px; }
 .quick-actions { display: flex; align-items: center; gap: 5px; }
 .icon-button, .clear-button, .mini-button, .lock-button, .fullscreen-button { border: 1px solid transparent; background: transparent; border-radius: 9px; min-height: 42px; }
@@ -37,6 +40,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(52,120,246,.
 
 .ribbon { position: relative; z-index: 4; display: flex; align-items: stretch; gap: 7px; min-width: 0; max-width: 100vw; min-height: 108px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--panel); box-shadow: 0 3px 12px rgba(60,63,83,.06); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .ribbon::-webkit-scrollbar { display: none; }
+.ribbon[hidden] { display: none; }
+.learn-controls { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.learn-controls label { font-size: 15px; font-weight: 650; }
+.learn-controls select { width: 94px; height: 52px; padding: 0 12px; border: 1px solid #b9cde9; border-radius: 11px; background: white; color: #155cb5; font-size: 24px; font-weight: 700; text-align: center; }
+.learn-nav { width: 50px; height: 50px; border: 1px solid #d4dce9; border-radius: 11px; background: white; color: #315d96; font-size: 24px; }
+.learn-tip { margin-left: 12px; color: #6d717c; font-size: 13px; }
 .tool-group { flex: none; display: flex; align-items: center; gap: 5px; }
 .divider { flex: none; width: 1px; align-self: stretch; margin: 3px 3px; background: var(--line); }
 .tool { width: 68px; height: 86px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px solid transparent; border-radius: 12px; background: transparent; }
@@ -110,6 +119,8 @@ input[type="range"] { accent-color: var(--accent); height: 34px; }
 
 .canvas-stage { position: relative; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 16px 22px; overflow: hidden; background-color: #d8dbe3; background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,.15) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(255,255,255,.15) 75%), linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.15) 75%); background-size: 24px 24px; background-position: 0 0, 0 12px, 12px -12px, -12px 0px; }
 .canvas-frame { position: relative; aspect-ratio: 16 / 9; width: min(100%, calc((100dvh - 190px) * 16 / 9)); max-height: 100%; background: white; box-shadow: 0 5px 25px rgba(36,39,53,.18), 0 0 0 1px #aeb2bd; touch-action: none; cursor: crosshair; }
+.app-shell.learning .canvas-frame { box-shadow: 0 7px 28px rgba(36,39,53,.2), 0 0 0 5px #fff, 0 0 0 7px #cfddf0; }
+.app-shell.learning .canvas-stage { background-color: #e9edf4; background-image: radial-gradient(rgba(119,143,179,.17) .8px, transparent .8px); background-size: 18px 18px; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 #guideCanvas { pointer-events: none; }
 .empty-hint { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #a0a5b1; text-align: center; }
@@ -161,6 +172,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .titlebar { padding-left: max(7px, env(safe-area-inset-left)); padding-right: max(7px, env(safe-area-inset-right)); }
   .brand > span:last-child { display: none; }
   .brand-mark { width: 36px; height: 36px; }
+  .app-modes { padding: 2px; }
+  .app-mode { min-height: 36px; padding: 0 9px; font-size: 12px; }
   .title-actions { gap: 3px; }
   .quick-actions { gap: 2px; }
   .icon-button { width: 40px; }
@@ -183,6 +196,12 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .canvas-stage { padding: 12px 7px; place-items: start center; }
   .canvas-frame { width: 100%; max-height: calc(100dvh - 158px); }
   .statusbar { display: none; }
+  .learn-ribbon { min-height: 90px; }
+  .learn-controls { justify-content: flex-start; min-width: max-content; gap: 6px; }
+  .learn-controls label { display: none; }
+  .learn-controls select { width: 70px; height: 48px; }
+  .learn-nav { width: 44px; height: 48px; }
+  .learn-tip { max-width: 116px; margin-left: 2px; font-size: 11px; white-space: normal; }
   .lock-badge { top: 7px; right: 8px; }
 }
 

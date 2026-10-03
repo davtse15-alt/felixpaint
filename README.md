@@ -10,6 +10,8 @@ Flex Paint is a touch-first, Windows 11 Paint-inspired drawing app made for play
 - Editable color sequences with reorder, reverse, presets, and saved custom palettes
 - Vertical mirror and four-way symmetry drawing
 - Large touch controls and a fixed 16:9 canvas
+- Separate **Learn** mode with traceable uppercase U.S. letters (A–Z) and numbers (0–9)
+- Select, step through, and retry tracing guides while keeping learning marks separate from paint pictures
 - **Little hands mode** hides the controls and requires a deliberate press-and-hold to unlock
 - Multi-touch protection prevents a second finger from interrupting an active stroke
 - Full-screen button with iPad/iPhone Home Screen fallback
