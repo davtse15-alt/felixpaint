@@ -189,11 +189,63 @@
 
   function drawStamp(point) {
     const size = Math.max(46, Math.min(132, state.size * 3));
+    drawDrumStamp(point, size, state.stamp);
+  }
+
+  function drawDrumStamp(point, size, type) {
     ctx.save();
-    ctx.font = `${size}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(state.stamp, point.x, point.y);
+    ctx.translate(point.x, point.y);
+    const scale = size / 100;
+    ctx.scale(scale, scale);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    const ellipse = (x, y, rx, ry, color, stroke = '#8d4a24', line = 4) => {
+      ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill(); ctx.lineWidth = line; ctx.strokeStyle = stroke; ctx.stroke();
+    };
+    const cylinder = (x, y, w, h, head, shell = '#f29a3f') => {
+      ctx.beginPath(); ctx.moveTo(x - w / 2, y); ctx.lineTo(x - w / 2, y + h * .66);
+      ctx.quadraticCurveTo(x, y + h * .92, x + w / 2, y + h * .66); ctx.lineTo(x + w / 2, y); ctx.closePath();
+      ctx.fillStyle = shell; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#a9562d'; ctx.stroke();
+      ellipse(x, y, w / 2, h * .22, '#ffbe63', '#a9562d', 4);
+      ellipse(x, y - 1, w / 2 - 7, h * .17, head, '#ce793c', 2.5);
+      for (const side of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(x + side * (w / 2 - 6), y + h * .29); ctx.lineTo(x + side * (w / 2 - 6), y + h * .55);
+        ctx.strokeStyle = '#75b94d'; ctx.lineWidth = 7; ctx.stroke();
+      }
+    };
+    if (type === 'toy-kit') {
+      // Blue toy base, green feet, and three orange-rimmed drums echo the supplied toy.
+      ctx.fillStyle = '#69b943';
+      for (const x of [-31, 0, 31]) { ctx.beginPath(); ctx.roundRect(x - 7, 21, 14, 18, 5); ctx.fill(); }
+      ctx.beginPath(); ctx.moveTo(-48, 8); ctx.quadraticCurveTo(-50, -4, -37, -4); ctx.lineTo(37, -4); ctx.quadraticCurveTo(50, -4, 48, 8); ctx.lineTo(40, 22); ctx.lineTo(-40, 22); ctx.closePath();
+      ctx.fillStyle = '#55b9d5'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#308ba7'; ctx.stroke();
+      cylinder(-29, -8, 39, 39, '#55bee5', '#82c950');
+      cylinder(0, -21, 42, 42, '#9bc64b', '#80c850');
+      cylinder(29, -8, 39, 39, '#ec7044', '#82c950');
+      ctx.beginPath(); ctx.ellipse(5, 14, 7, 5, 0, 0, Math.PI * 2); ctx.fillStyle = '#ef7143'; ctx.fill();
+    } else if (type === 'bongos') {
+      cylinder(-22, -4, 39, 48, '#d6a66b', '#c77a39');
+      cylinder(22, -4, 39, 48, '#efc988', '#d18b43');
+      ctx.beginPath(); ctx.moveTo(-29, 16); ctx.lineTo(-37, 38); ctx.moveTo(29, 16); ctx.lineTo(37, 38);
+      ctx.strokeStyle = '#87502d'; ctx.lineWidth = 4; ctx.stroke();
+    } else if (type === 'bass') {
+      ellipse(0, 0, 43, 40, '#f39a3d', '#964d2a', 5);
+      ellipse(0, 0, 34, 31, '#fff0d5', '#d07837', 3);
+      ellipse(0, 0, 8, 7, '#46536b', '#26364b', 2);
+      for (const a of [0, 1, 2, 3, 4, 5, 6, 7]) {
+        const x = Math.cos(a * Math.PI / 4) * 40, y = Math.sin(a * Math.PI / 4) * 37;
+        ellipse(x, y, 3, 3, '#ffe29d', '#a85c2c', 1);
+      }
+    } else {
+      const head = type === 'snare' ? '#e7edf2' : type === 'tom' ? '#60bee3' : '#80c958';
+      cylinder(0, -11, 68, 62, head, type === 'tom' ? '#66b64e' : '#ed9843');
+      ctx.beginPath(); ctx.moveTo(-23, 29); ctx.lineTo(-28, 43); ctx.moveTo(23, 29); ctx.lineTo(28, 43);
+      ctx.strokeStyle = '#7e583c'; ctx.lineWidth = 4; ctx.stroke();
+      if (type === 'snare') {
+        ctx.beginPath(); ctx.ellipse(0, 29, 31, 8, 0, 0, Math.PI); ctx.strokeStyle = '#b8c4d0'; ctx.lineWidth = 3; ctx.stroke();
+      }
+    }
     ctx.restore();
   }
 
@@ -318,19 +370,7 @@
   function drawGuides() {
     gtx.clearRect(0, 0, W, H);
     if (state.appMode === 'learn') {
-      gtx.save();
-      gtx.textAlign = 'center';
-      gtx.textBaseline = 'middle';
-      gtx.font = '600 470px "Arial Rounded MT Bold", "Trebuchet MS", sans-serif';
-      gtx.lineWidth = 13;
-      gtx.lineJoin = 'round';
-      gtx.setLineDash([5, 15]);
-      gtx.strokeStyle = 'rgba(69, 130, 214, .56)';
-      gtx.strokeText(state.traceItem, W / 2, H / 2 + 5);
-      gtx.setLineDash([]);
-      gtx.fillStyle = 'rgba(69, 130, 214, .14)';
-      gtx.fillText(state.traceItem, W / 2, H / 2 + 5);
-      gtx.restore();
+      drawTraceWorksheet();
       return;
     }
     if (state.symmetry === 'none') return;
@@ -467,9 +507,47 @@
   }
 
   function updateStatus() {
-    const tool = state.stamp ? `${state.stamp} Stamp` : state.tool[0].toUpperCase() + state.tool.slice(1);
+    const stampNames = { 'toy-kit': 'Toy drum kit', snare: 'Snare drum', bongos: 'Bongo drums', bass: 'Bass drum', tom: 'Tom drum' };
+    const tool = state.stamp ? `${stampNames[state.stamp] || state.stamp} Stamp` : state.tool[0].toUpperCase() + state.tool.slice(1);
     const mode = state.mode[0].toUpperCase() + state.mode.slice(1);
-    $('#statusText').textContent = state.appMode === 'learn' ? `Learning · ${state.traceItem}` : `${tool} · ${mode}${state.symmetry === 'none' ? '' : ' · Symmetry'}`;
+    $('#statusText').textContent = state.appMode === 'learn' ? (/^[0-9]$/.test(state.traceItem) ? 'Number worksheet · 0–9' : `Letter worksheet · ${state.traceItem}`) : `${tool} · ${mode}${state.symmetry === 'none' ? '' : ' · Symmetry'}`;
+  }
+
+  function drawTraceWorksheet() {
+    const isNumberWorksheet = /^[0-9]$/.test(state.traceItem);
+    gtx.save();
+    gtx.fillStyle = '#425d7b';
+    gtx.font = '600 31px "Segoe UI", sans-serif';
+    gtx.textAlign = 'left';
+    gtx.textBaseline = 'middle';
+    gtx.fillText(isNumberWorksheet ? 'NUMBER TRACING  ·  0–9' : `LETTER TRACING  ·  ${state.traceItem}`, 48, 34);
+    gtx.font = '20px "Segoe UI", sans-serif';
+    gtx.fillStyle = '#7b8795';
+    gtx.fillText('Name', 760, 34);
+    gtx.beginPath(); gtx.moveTo(820, 44); gtx.lineTo(1010, 44); gtx.moveTo(1032, 44); gtx.lineTo(1080, 44); gtx.strokeStyle = '#c5d0dd'; gtx.lineWidth = 2; gtx.stroke();
+    gtx.font = '18px "Segoe UI", sans-serif'; gtx.fillText('Date', 1018, 34);
+
+    const marginX = 36, top = 70, gapX = 12, gapY = 12;
+    const cellW = (W - marginX * 2 - gapX * 4) / 5;
+    const cellH = (H - top - 30 - gapY) / 2;
+    for (let n = 0; n < 10; n++) {
+      const col = n % 5, row = Math.floor(n / 5);
+      const guideCharacter = isNumberWorksheet ? String(n) : state.traceItem;
+      const x = marginX + col * (cellW + gapX), y = top + row * (cellH + gapY);
+      gtx.beginPath(); gtx.roundRect(x, y, cellW, cellH, 18);
+      gtx.fillStyle = 'rgba(246, 250, 255, .48)'; gtx.fill();
+      gtx.lineWidth = 2.5; gtx.setLineDash([5, 8]); gtx.strokeStyle = 'rgba(104, 145, 193, .36)'; gtx.stroke(); gtx.setLineDash([]);
+      gtx.textAlign = 'center'; gtx.textBaseline = 'middle';
+      gtx.font = '700 166px "Arial Rounded MT Bold", "Trebuchet MS", sans-serif';
+      gtx.lineWidth = 8; gtx.lineJoin = 'round'; gtx.setLineDash([5, 12]);
+      gtx.strokeStyle = 'rgba(69, 130, 214, .62)';
+      gtx.strokeText(guideCharacter, x + cellW / 2, y + cellH * .51);
+      gtx.setLineDash([]); gtx.fillStyle = 'rgba(69, 130, 214, .12)';
+      gtx.fillText(guideCharacter, x + cellW / 2, y + cellH * .51);
+      gtx.beginPath(); gtx.moveTo(x + 20, y + cellH - 34); gtx.lineTo(x + cellW - 20, y + cellH - 34);
+      gtx.strokeStyle = 'rgba(130, 154, 181, .4)'; gtx.lineWidth = 2; gtx.setLineDash([4, 9]); gtx.stroke(); gtx.setLineDash([]);
+    }
+    gtx.restore();
   }
 
   function setAppMode(mode) {

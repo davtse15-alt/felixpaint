@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Flex Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
   <main class="app-shell">
@@ -45,12 +45,13 @@
 
       <div class="divider" aria-hidden="true"></div>
 
-      <div class="tool-group stamp-group" role="group" aria-label="Picture stamps">
+      <div class="tool-group stamp-group" role="group" aria-label="Drum stamps">
         <span class="group-label">Stamps</span>
-        <button class="stamp" data-stamp="🥁" aria-pressed="false" aria-label="Place a drum">🥁</button>
-        <button class="stamp" data-stamp="🎵" aria-pressed="false" aria-label="Place a music note">🎵</button>
-        <button class="stamp" data-stamp="⭐" aria-pressed="false" aria-label="Place a star">⭐</button>
-        <button class="stamp" data-stamp="🌈" aria-pressed="false" aria-label="Place a rainbow">🌈</button>
+        <button class="stamp" data-stamp="toy-kit" aria-pressed="false" aria-label="Place a colorful toy drum kit"><span>🥁</span><small>Kit</small></button>
+        <button class="stamp" data-stamp="snare" aria-pressed="false" aria-label="Place a snare drum"><span>🪘</span><small>Snare</small></button>
+        <button class="stamp" data-stamp="bongos" aria-pressed="false" aria-label="Place a pair of bongo drums"><span>🪘</span><small>Bongos</small></button>
+        <button class="stamp" data-stamp="bass" aria-pressed="false" aria-label="Place a bass drum"><span>🥁</span><small>Bass</small></button>
+        <button class="stamp" data-stamp="tom" aria-pressed="false" aria-label="Place a colorful tom drum"><span>🥁</span><small>Tom</small></button>
       </div>
 
       <div class="divider" aria-hidden="true"></div>
@@ -92,7 +93,7 @@
 
     <section class="ribbon learn-ribbon" aria-label="Learning controls" hidden>
       <div class="learn-controls">
-        <label for="traceItem">Trace a letter or number</label>
+        <label for="traceItem">Choose a letter or number worksheet</label>
         <select id="traceItem" aria-label="Choose a U.S. letter or number"></select>
         <button class="learn-nav" id="previousItem" aria-label="Previous letter or number">←</button>
         <button class="learn-nav" id="nextItem" aria-label="Next letter or number">→</button>
@@ -161,6 +162,6 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
