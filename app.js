@@ -829,6 +829,21 @@
   frame.addEventListener('pointermove', onPointerMove);
   frame.addEventListener('pointerup', onPointerUp);
   frame.addEventListener('pointercancel', onPointerUp);
+  const brushCursor = $('#brushCursor');
+  function updateBrushCursor(event) {
+    if (event.pointerType !== 'mouse') return;
+    const rect = frame.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    brushCursor.style.left = `${x}px`;
+    brushCursor.style.top = `${y}px`;
+    brushCursor.classList.toggle('visible', x >= 0 && y >= 0 && x <= rect.width && y <= rect.height);
+  }
+  frame.addEventListener('pointermove', updateBrushCursor);
+  frame.addEventListener('pointerdown', updateBrushCursor);
+  frame.addEventListener('pointerleave', () => { if (!state.drawing) brushCursor.classList.remove('visible'); });
+  frame.addEventListener('pointerup', event => updateBrushCursor(event));
+  frame.addEventListener('pointercancel', () => brushCursor.classList.remove('visible'));
   frame.addEventListener('contextmenu', event => event.preventDefault());
 
   setupUI();

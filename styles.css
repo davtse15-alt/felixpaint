@@ -56,7 +56,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(52,120,246,.
 .stamp-group { width: 315px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-content: center; gap: 5px; }
 .stamp-group .group-label { grid-column: 1 / -1; }
 .stamp { height: 52px; padding: 2px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border: 1px solid #d9dce5; border-radius: 10px; background: #fff; line-height: 1; }
-.stamp span { font-size: 24px; }
+.stamp svg { display: block; width: 40px; height: 32px; flex: none; }
 .stamp small { font-size: 9px; color: #666b77; }
 .stamp[aria-pressed="true"] { background: #e7f0ff; border-color: #8cb9ff; box-shadow: inset 0 0 0 1px #8cb9ff; }
 
@@ -121,6 +121,9 @@ input[type="range"] { accent-color: var(--accent); height: 34px; }
 
 .canvas-stage { position: relative; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 16px 22px; overflow: hidden; background-color: #d8dbe3; background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,.15) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(255,255,255,.15) 75%), linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.15) 75%); background-size: 24px 24px; background-position: 0 0, 0 12px, 12px -12px, -12px 0px; }
 .canvas-frame { position: relative; aspect-ratio: 16 / 9; width: min(100%, calc((100dvh - 190px) * 16 / 9)); max-height: 100%; background: white; box-shadow: 0 5px 25px rgba(36,39,53,.18), 0 0 0 1px #aeb2bd; touch-action: none; cursor: crosshair; }
+.brush-cursor { display: none; position: absolute; z-index: 6; left: 0; top: 0; width: 44px; height: 44px; transform: translate(-50%, -50%); align-items: center; justify-content: center; border: 3px solid #075ecc; border-radius: 50%; background: rgba(255,255,255,.38); box-shadow: 0 0 0 3px #fff, 0 2px 9px rgba(0,0,0,.55); pointer-events: none; }
+.brush-cursor span { width: 7px; height: 7px; border: 1px solid white; border-radius: 50%; background: #075ecc; box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+@media (hover: hover) and (pointer: fine) { .canvas-frame { cursor: none; } .brush-cursor.visible { display: flex; } }
 .app-shell.learning .canvas-frame { box-shadow: 0 7px 28px rgba(36,39,53,.2), 0 0 0 5px #fff, 0 0 0 7px #cfddf0; }
 .app-shell.learning .canvas-stage { background-color: #e9edf4; background-image: radial-gradient(rgba(119,143,179,.17) .8px, transparent .8px); background-size: 18px 18px; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -148,7 +151,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .tool span { font-size: 32px; line-height: 34px; }
   .stamp-group { width: 278px; }
   .stamp { height: 47px; }
-  .stamp span { font-size: 21px; }
+  .stamp svg { width: 36px; height: 30px; }
   .size-group { width: 132px; }
   .paint-group { width: 225px; }
   .color-panel { top: 142px; transform: translateX(-50%); grid-template-columns: 1fr 1.4fr; max-height: calc(100dvh - 160px); overflow-y: auto; }
