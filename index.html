@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Flex Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
   <main class="app-shell">
@@ -165,8 +165,19 @@
     </footer>
   </main>
 
+  <details class="sound-check" id="soundCheck" hidden open>
+    <summary>Sound check · v15</summary>
+    <dl>
+      <dt>Microphone</dt><dd id="soundMicrophone">Waiting</dd>
+      <dt>Speech model</dt><dd id="soundModel">Waiting</dd>
+      <dt>Audio</dt><dd id="soundAudio">Waiting for a recording</dd>
+      <dt>Now</dt><dd id="soundStage" role="status">Preparing…</dd>
+      <dt>Last heard</dt><dd id="soundHeard">No words yet</dd>
+    </dl>
+    <p id="soundError" role="alert" hidden></p>
+  </details>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=14"></script>
-  <script type="module" src="voice-recognition.js?v=14"></script>
+  <script src="app.js?v=15"></script>
+  <script type="module" src="voice-recognition.js?v=15"></script>
 </body>
 </html>

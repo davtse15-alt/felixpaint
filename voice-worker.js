@@ -29,8 +29,7 @@ self.addEventListener('message', async event => {
   if (type === 'transcribe' && transcriber) {
     try {
       const result = await transcriber(audio, {
-        language: 'english',
-        task: 'transcribe',
+        // This English-only model rejects explicit language/task options.
         max_new_tokens: 24,
         do_sample: false
       });

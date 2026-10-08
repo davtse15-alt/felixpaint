@@ -603,6 +603,16 @@
   }
 
   function setSoundMode(enabled) {
+    $('#soundCheck').hidden = !enabled;
+    if (enabled) {
+      $('#soundCheck').open = true;
+      $('#soundError').hidden = true;
+      $('#soundMicrophone').textContent = 'Waiting';
+      $('#soundModel').textContent = 'Waiting';
+      $('#soundAudio').textContent = 'Waiting for a recording';
+      $('#soundHeard').textContent = 'No words yet';
+      $('#soundStage').textContent = 'Preparing…';
+    }
     state.voiceEnabled = enabled;
     if (!enabled) state.voiceStatus = '';
     updateSoundButton();
@@ -620,7 +630,13 @@
 
   window.addEventListener('sound-colour-status', event => {
     state.voiceStatus = event.detail.message;
+    $('#soundStage').textContent = event.detail.message;
     updateSoundButton();
+  });
+  window.addEventListener('sound-colour-diagnostic', event => {
+    const fields = { microphone: '#soundMicrophone', model: '#soundModel', audio: '#soundAudio', heard: '#soundHeard' };
+    const selector = fields[event.detail.field];
+    if (selector) $(selector).textContent = event.detail.value;
   });
   window.addEventListener('sound-colour-match', event => {
     const { name, color } = event.detail;
@@ -634,6 +650,11 @@
     showToast(`Heard: “${event.detail.transcript}”`);
   });
   window.addEventListener('sound-colour-error', event => {
+    $('#soundCheck').hidden = false;
+    $('#soundCheck').open = true;
+    $('#soundStage').textContent = 'Stopped — see error below';
+    $('#soundError').textContent = event.detail.message;
+    $('#soundError').hidden = false;
     state.voiceEnabled = false;
     state.voiceStatus = '';
     updateSoundButton();

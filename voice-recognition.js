@@ -38,6 +38,10 @@ function status(message) {
   window.dispatchEvent(new CustomEvent('sound-colour-status', { detail: { message } }));
 }
 
+function diagnostic(field, value) {
+  window.dispatchEvent(new CustomEvent('sound-colour-diagnostic', { detail: { field, value } }));
+}
+
 function fail(message, currentSession) {
   if (currentSession !== sessionId) return;
   active = false;
@@ -51,15 +55,17 @@ function fail(message, currentSession) {
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=14', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=15', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
-    workerReadyResolve = resolve;
-    workerReadyReject = reject;
+    const loadTimeout = setTimeout(() => workerReadyReject?.(new Error('Speech model loading timed out. Check your connection and try again.')), 120000);
+    workerReadyResolve = () => { clearTimeout(loadTimeout); resolve(); };
+    workerReadyReject = error => { clearTimeout(loadTimeout); reject(error); };
     worker.addEventListener('message', event => {
       const message = event.data;
       if (message.type === 'progress') {
-        status(`Loading model ${message.progress}%…`);
+        if (active) diagnostic('model', `Downloading ${message.progress}%…`);
       } else if (message.type === 'ready') {
+        if (active) diagnostic('model', 'Ready');
         workerReadyResolve?.();
         workerReadyResolve = null;
         workerReadyReject = null;
@@ -71,6 +77,7 @@ function getWorker() {
         const job = transcriptionJobs.get(message.id);
         if (!job) return;
         transcriptionJobs.delete(message.id);
+        clearTimeout(job.timeout);
         if (message.type === 'transcribed') job.resolve(message.text);
         else job.reject(new Error(message.message));
       }
@@ -80,7 +87,10 @@ function getWorker() {
       workerReadyReject?.(error);
       workerReadyResolve = null;
       workerReadyReject = null;
-      for (const job of transcriptionJobs.values()) job.reject(error);
+      for (const job of transcriptionJobs.values()) {
+        clearTimeout(job.timeout);
+        job.reject(error);
+      }
       transcriptionJobs.clear();
       worker?.terminate();
       worker = null;
@@ -99,7 +109,14 @@ function getWorker() {
 function transcribe(audio) {
   const id = ++nextJobId;
   return new Promise((resolve, reject) => {
-    transcriptionJobs.set(id, { resolve, reject });
+    const timeout = setTimeout(() => {
+      transcriptionJobs.delete(id);
+      worker?.terminate();
+      worker = null;
+      workerReadyPromise = null;
+      reject(new Error('Speech recognition timed out. Turn Sound colours on to retry.'));
+    }, 60000);
+    transcriptionJobs.set(id, { resolve, reject, timeout });
     worker.postMessage({ type: 'transcribe', id, audio }, [audio.buffer]);
   });
 }
@@ -144,22 +161,36 @@ function hasSpeech(audio) {
 }
 
 async function transcribeClip(blob, currentSession) {
+  let stage = 'Reading microphone recording';
   try {
-    if (blob.size < 1000) return;
+    if (blob.size < 1000) {
+      diagnostic('audio', 'Recording was empty or too short');
+      return;
+    }
+    status('Reading recording…');
     const audio = await audioToMono16k(blob);
-    if (!active || currentSession !== sessionId || !hasSpeech(audio)) return;
+    if (!active || currentSession !== sessionId) return;
+    if (!hasSpeech(audio)) {
+      diagnostic('audio', 'Only quiet audio detected — try speaking closer');
+      return;
+    }
+    diagnostic('audio', 'Sound detected');
 
+    stage = 'Loading speech model';
     await getWorker();
     if (!active || currentSession !== sessionId) return;
+    stage = 'Recognising speech';
+    status('Recognising speech…');
     const transcript = await transcribe(audio);
     if (!active || currentSession !== sessionId) return;
     const heard = transcript.trim();
+    diagnostic('heard', heard || 'No words recognised');
     if (!heard) return;
     const match = matchColor(transcript);
     if (match) window.dispatchEvent(new CustomEvent('sound-colour-match', { detail: match }));
     else window.dispatchEvent(new CustomEvent('sound-colour-heard', { detail: { transcript: heard } }));
-  } catch (_) {
-    // Skip a clip the browser could not decode and keep the next one available.
+  } catch (error) {
+    fail(`${stage}: ${error?.message || String(error)}`, currentSession);
   } finally {
     if (active && currentSession === sessionId) {
       status('Listening on this device…');
@@ -172,17 +203,22 @@ function recordSegment(currentSession) {
   if (!active || currentSession !== sessionId || !stream) return;
   let chunks = [];
   try {
-    recorder = new MediaRecorder(stream);
-    recorder.addEventListener('dataavailable', event => {
+    const segmentRecorder = new MediaRecorder(stream);
+    recorder = segmentRecorder;
+    status('Listening — say a colour');
+    segmentRecorder.addEventListener('error', event => {
+      fail(`Microphone recording failed: ${event.error?.message || 'Try turning Sound colours on again.'}`, currentSession);
+    });
+    segmentRecorder.addEventListener('dataavailable', event => {
       if (event.data?.size) chunks.push(event.data);
     });
-    recorder.addEventListener('stop', () => {
-      const clip = new Blob(chunks, { type: recorder?.mimeType || '' });
+    segmentRecorder.addEventListener('stop', () => {
+      const clip = new Blob(chunks, { type: segmentRecorder.mimeType });
       chunks = [];
-      recorder = null;
+      if (recorder === segmentRecorder) recorder = null;
       if (active && currentSession === sessionId) void transcribeClip(clip, currentSession);
     }, { once: true });
-    recorder.start();
+    segmentRecorder.start();
     segmentTimer = setTimeout(() => {
       if (active && currentSession === sessionId && recorder?.state === 'recording') recorder.stop();
     }, CLIP_LENGTH_MS);
@@ -206,6 +242,8 @@ async function startListening() {
   }
 
   status('Starting private listening…');
+  diagnostic('microphone', 'Requesting permission…');
+  diagnostic('model', 'Loading…');
   try {
     const microphoneRequest = navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
@@ -220,16 +258,17 @@ async function startListening() {
       return;
     }
     stream = newStream;
-    status('Listening on this device…');
-    recordSegment(currentSession);
+    diagnostic('microphone', 'Allowed');
+    status('Preparing speech model…');
     const modelResult = await modelRequest;
     if (modelResult.error) throw modelResult.error;
     if (!active || currentSession !== sessionId) return;
-    status('Listening on this device…');
+    diagnostic('model', 'Ready');
+    recordSegment(currentSession);
   } catch (error) {
     const message = error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError'
       ? 'Allow microphone access to use sound colours'
-      : 'Could not prepare on-device voice colours. Check your connection and try again';
+      : `Could not start sound colours: ${error?.message || String(error)}`;
     fail(message, currentSession);
   }
 }
@@ -242,6 +281,16 @@ function stopListening() {
   recorder = null;
   stream?.getTracks().forEach(track => track.stop());
   stream = null;
+  if (transcriptionJobs.size) {
+    for (const job of transcriptionJobs.values()) {
+      clearTimeout(job.timeout);
+      job.reject(new Error('Sound colours stopped'));
+    }
+    transcriptionJobs.clear();
+    worker?.terminate();
+    worker = null;
+    workerReadyPromise = null;
+  }
 }
 
 window.addEventListener('sound-colour-start', () => { void startListening(); });
