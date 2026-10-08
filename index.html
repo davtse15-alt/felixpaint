@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Flex Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
   <main class="app-shell">
@@ -25,7 +25,7 @@
         <button class="fullscreen-button" id="fullscreenBtn" aria-label="Enter full screen" title="Full screen">
           <span aria-hidden="true">⛶</span><span class="fullscreen-label">Full screen</span>
         </button>
-        <button class="sound-button" id="soundBtn" aria-pressed="false" aria-label="Turn on sound colour mode" title="Say a colour">
+        <button class="sound-button" id="soundBtn" aria-pressed="false" aria-label="Turn on sound colour mode" title="Say a colour. Your voice stays on this device.">
           <span aria-hidden="true">🎙️</span><span class="sound-label">Sound colours</span>
         </button>
         <button class="lock-button" id="lockBtn" aria-pressed="false" aria-label="Turn on Little hands mode">
@@ -166,6 +166,7 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
+  <script type="module" src="voice-recognition.js?v=13"></script>
 </body>
 </html>
