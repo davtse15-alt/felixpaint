@@ -143,6 +143,15 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .empty-hint span { font-size: clamp(18px, 3vw, 34px); font-weight: 600; }
 .empty-hint small { font-size: clamp(11px, 1.3vw, 16px); }
 .empty-hint.hidden { display: none; }
+.colour-celebration { position: absolute; inset: 0; z-index: 12; display: grid; place-items: center; overflow: hidden; pointer-events: none; container-type: inline-size; }
+.colour-celebration[hidden] { display: none; }
+.colour-word { position: relative; z-index: 1; font-size: clamp(38px, 12vw, 150px); font-size: clamp(30px, 15cqw, 150px); font-weight: 950; line-height: 1.1; letter-spacing: -.035em; color: var(--celebration-colour); -webkit-text-stroke: 2px #38334b; paint-order: stroke fill; text-shadow: 0 5px 0 #fff, 0 0 12px #fff, 0 0 28px #fff; }
+.celebrating .colour-word { animation: colour-pop 2.4s ease both; }
+.colour-confetti { position: absolute; inset: 0; z-index: 2; }
+.colour-confetti i { position: absolute; top: -20px; width: 12px; height: 18px; border: 1px solid #ffffff90; border-radius: 3px; animation: colour-confetti-fall 1.9s ease-in both; }
+@keyframes colour-pop { 0% { opacity: 0; transform: scale(.55) rotate(-5deg); } 15% { opacity: 1; transform: scale(1.1) rotate(2deg); } 25%, 78% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.95); } }
+@keyframes colour-confetti-fall { from { transform: translateY(-20px) rotate(0); opacity: 1; } to { transform: translate(var(--drift), 520px) rotate(var(--spin)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .celebrating .colour-word { animation: none; } .colour-confetti { display: none; } }
 .lock-badge { display: none; position: absolute; z-index: 3; top: 12px; right: 14px; padding: 7px 11px; border-radius: 18px; background: rgba(255,255,255,.82); box-shadow: 0 2px 9px rgba(35,40,55,.13); color: #59606d; font-size: 12px; pointer-events: none; }
 .app-shell.locked { grid-template-rows: 52px 1fr; }
 .app-shell.locked .ribbon, .app-shell.locked .statusbar, .app-shell.locked .quick-actions { display: none; }

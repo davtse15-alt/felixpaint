@@ -638,12 +638,38 @@
     const selector = fields[event.detail.field];
     if (selector) $(selector).textContent = event.detail.value;
   });
+  let celebrationTimer;
+  function celebrateColour(name, color) {
+    const celebration = $('#colourCelebration');
+    clearTimeout(celebrationTimer);
+    celebration.hidden = false;
+    celebration.style.setProperty('--celebration-colour', color);
+    celebration.querySelector('.colour-word').textContent = name.toUpperCase() + '!';
+    const confetti = celebration.querySelector('.colour-confetti');
+    confetti.replaceChildren();
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      for (let i = 0; i < 48; i++) {
+        const piece = document.createElement('i');
+        piece.style.cssText = `left:${Math.random() * 100}%;background:${i % 3 ? color : ['#ff4da6', '#43d9ff', '#ffdb3b'][Math.floor(i / 3) % 3]};--drift:${(Math.random() - .5) * 240}px;--spin:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * .35}s`;
+        confetti.append(piece);
+      }
+    }
+    celebration.classList.remove('celebrating');
+    void celebration.offsetWidth;
+    celebration.classList.add('celebrating');
+    celebrationTimer = setTimeout(() => {
+      celebration.hidden = true;
+      confetti.replaceChildren();
+    }, 2400);
+  }
+
   window.addEventListener('sound-colour-match', event => {
     const { name, color } = event.detail;
     state.solid = color;
     $('#solidColor').value = color;
     syncSpectrumFromSolid();
     setMode('solid');
+    celebrateColour(name, color);
     showToast(`${name[0].toUpperCase()}${name.slice(1)}!`);
   });
   window.addEventListener('sound-colour-heard', event => {

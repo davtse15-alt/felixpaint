@@ -6,9 +6,10 @@
 <h1>Sound integration tests</h1>
 <p>First run the built-in test. It uses a known recording of “yellow” and needs no microphone permission. Then test your microphone and say “yellow” when prompted. Audio stays on this device.</p>
 <button id="run">Run built-in test</button><button id="mic">Test microphone</button><pre id="log" role="status"></pre>
-<iframe id="app" src="../index.html"></iframe>
+<button id="preview">Preview colour celebration</button>
+<iframe id="app" src="../index.html?test=16"></iframe>
 <script type="module">
-import {audioToMono16k, hasSpeech, matchColor} from '../voice-recognition.js';
+import {audioToMono16k, hasSpeech, matchColor, shouldFinishClip} from '../voice-recognition.js';
 const log = text => document.querySelector('#log').textContent += text + '\n';
 const check = (condition, message) => { if (!condition) throw new Error(message); log('PASS: ' + message); };
 const deadline = (promise, name) => new Promise((resolve,reject) => {
@@ -25,6 +26,11 @@ async function run(useMic = false) {
     // Unlock audio directly in the tap handler, before model-loading awaits.
     await deadline(context.resume(),'Starting browser audio');
     log('Browser audio: ' + context.state);
+    check(!shouldFinishClip(500,450,500),'does not cut off speech in progress');
+    check(!shouldFinishClip(700,450,700),'waits through a short pause inside a word');
+    check(shouldFinishClip(750,450,750),'ends recording 300ms after speech');
+    check(!shouldFinishClip(1000,null,1000),'does not mistake initial silence for a completed word');
+    check(shouldFinishClip(3000,null,3000),'bounds silent recordings to three seconds');
     if(useMic) {
       log('Requesting microphone permission…');
       inputStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
@@ -83,10 +89,20 @@ async function run(useMic = false) {
     const app = document.querySelector('#app').contentWindow;
     app.dispatchEvent(new app.CustomEvent('sound-colour-match',{detail:match}));
     check(app.document.querySelector('#solidColor').value === '#ffd43b','actual app selects yellow');
+    const celebration = app.document.querySelector('#colourCelebration');
+    check(!celebration.hidden && celebration.querySelector('.colour-word').textContent === 'YELLOW!','large yellow celebration appears');
+    check(app.getComputedStyle(celebration).pointerEvents === 'none','celebration allows drawing through it');
+    if(!app.matchMedia('(prefers-reduced-motion: reduce)').matches) check(celebration.querySelectorAll('.colour-confetti i').length === 48,'confetti burst is present');
+    await new Promise(resolve=>setTimeout(resolve,2600));
+    check(celebration.hidden,'celebration clears itself');
     log('ALL TESTS PASSED'); document.title = 'Sound test passed';
   } catch(error) { log('FAIL: ' + error.message); document.title = 'Sound test failed'; console.error(error); }
   finally { worker?.terminate(); inputStream?.getTracks().forEach(track=>track.stop()); context?.close().catch(()=>{}); document.querySelectorAll('button').forEach(button=>button.disabled=false); }
 }
 document.querySelector('#run').onclick = () => run(false);
 document.querySelector('#mic').onclick = () => run(true);
+document.querySelector('#preview').onclick = () => {
+  const app = document.querySelector('#app').contentWindow;
+  app.dispatchEvent(new app.CustomEvent('sound-colour-match',{detail:{name:'yellow',color:'#ffd43b'}}));
+};
 </script>

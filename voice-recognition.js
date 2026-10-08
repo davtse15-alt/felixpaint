@@ -1,5 +1,6 @@
 const SAMPLE_RATE = 16000;
-const CLIP_LENGTH_MS = 4200;
+const CLIP_LENGTH_MS = 3000;
+const SILENCE_MS = 300;
 
 const colors = {
   red: '#ed3349',
@@ -27,6 +28,9 @@ let sessionId = 0;
 let stream = null;
 let recorder = null;
 let segmentTimer = null;
+let captureContext = null;
+let analyser = null;
+let microphoneSource = null;
 let worker = null;
 let workerReadyPromise = null;
 let workerReadyResolve = null;
@@ -50,12 +54,13 @@ function fail(message, currentSession) {
   recorder = null;
   stream?.getTracks().forEach(track => track.stop());
   stream = null;
+  closeAudioMonitor();
   window.dispatchEvent(new CustomEvent('sound-colour-error', { detail: { message } }));
 }
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=15', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=16', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
     const loadTimeout = setTimeout(() => workerReadyReject?.(new Error('Speech model loading timed out. Check your connection and try again.')), 120000);
     workerReadyResolve = () => { clearTimeout(loadTimeout); resolve(); };
@@ -160,6 +165,18 @@ function hasSpeech(audio) {
   return audio.length > 0 && Math.sqrt(sum / audio.length) > 0.006;
 }
 
+function shouldFinishClip(elapsed, lastSpeech, now) {
+  return elapsed >= CLIP_LENGTH_MS || (elapsed >= 450 && lastSpeech !== null && now - lastSpeech >= SILENCE_MS);
+}
+
+function closeAudioMonitor() {
+  microphoneSource?.disconnect();
+  microphoneSource = null;
+  analyser = null;
+  captureContext?.close().catch(() => {});
+  captureContext = null;
+}
+
 async function transcribeClip(blob, currentSession) {
   let stage = 'Reading microphone recording';
   try {
@@ -194,7 +211,7 @@ async function transcribeClip(blob, currentSession) {
   } finally {
     if (active && currentSession === sessionId) {
       status('Listening on this device…');
-      segmentTimer = setTimeout(() => recordSegment(currentSession), 180);
+      segmentTimer = setTimeout(() => recordSegment(currentSession), 0);
     }
   }
 }
@@ -219,9 +236,22 @@ function recordSegment(currentSession) {
       if (active && currentSession === sessionId) void transcribeClip(clip, currentSession);
     }, { once: true });
     segmentRecorder.start();
-    segmentTimer = setTimeout(() => {
-      if (active && currentSession === sessionId && recorder?.state === 'recording') recorder.stop();
-    }, CLIP_LENGTH_MS);
+    const started = performance.now();
+    let lastSpeech = null;
+    const samples = analyser ? new Float32Array(analyser.fftSize) : null;
+    const watch = () => {
+      if (!active || currentSession !== sessionId || segmentRecorder.state !== 'recording') return;
+      const now = performance.now();
+      if (analyser && samples) {
+        analyser.getFloatTimeDomainData(samples);
+        if (hasSpeech(samples)) lastSpeech = now;
+      }
+      const monitored = analyser && captureContext?.state === 'running';
+      if (monitored ? shouldFinishClip(now - started, lastSpeech, now) : now - started >= 1500) {
+        segmentRecorder.stop();
+      } else segmentTimer = setTimeout(watch, 50);
+    };
+    segmentTimer = setTimeout(watch, 50);
   } catch (_) {
     fail('This browser could not start microphone recording', currentSession);
   }
@@ -245,6 +275,12 @@ async function startListening() {
   diagnostic('microphone', 'Requesting permission…');
   diagnostic('model', 'Loading…');
   try {
+    // Resume in the original tap so iPad audio is unlocked before async loading.
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      captureContext = new AudioContextClass();
+      captureContext.resume().catch(() => {});
+    }
     const microphoneRequest = navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
@@ -258,6 +294,12 @@ async function startListening() {
       return;
     }
     stream = newStream;
+    if (captureContext) {
+      microphoneSource = captureContext.createMediaStreamSource(stream);
+      analyser = captureContext.createAnalyser();
+      analyser.fftSize = 2048;
+      microphoneSource.connect(analyser);
+    }
     diagnostic('microphone', 'Allowed');
     status('Preparing speech model…');
     const modelResult = await modelRequest;
@@ -281,6 +323,7 @@ function stopListening() {
   recorder = null;
   stream?.getTracks().forEach(track => track.stop());
   stream = null;
+  closeAudioMonitor();
   if (transcriptionJobs.size) {
     for (const job of transcriptionJobs.values()) {
       clearTimeout(job.timeout);
@@ -296,4 +339,4 @@ function stopListening() {
 window.addEventListener('sound-colour-start', () => { void startListening(); });
 window.addEventListener('sound-colour-stop', stopListening);
 
-export { audioToMono16k, hasSpeech, matchColor };
+export { audioToMono16k, hasSpeech, matchColor, shouldFinishClip };

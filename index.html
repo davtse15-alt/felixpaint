@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Flex Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
   <main class="app-shell">
@@ -149,6 +149,10 @@
     <section class="canvas-stage" id="canvasStage">
       <div class="lock-badge" id="lockBadge" aria-hidden="true">🔒 Little hands mode</div>
       <div class="canvas-frame" id="canvasFrame">
+        <div class="colour-celebration" id="colourCelebration" hidden role="status" aria-live="polite">
+          <strong class="colour-word"></strong>
+          <div class="colour-confetti" aria-hidden="true"></div>
+        </div>
         <canvas id="guideCanvas" width="1280" height="720" aria-hidden="true"></canvas>
         <canvas id="paintCanvas" width="1280" height="720" aria-label="Drawing canvas"></canvas>
         <div class="brush-cursor" id="brushCursor" aria-hidden="true"><span></span></div>
@@ -166,7 +170,7 @@
   </main>
 
   <details class="sound-check" id="soundCheck" hidden open>
-    <summary>Sound check · v15</summary>
+    <summary>Sound check · v16</summary>
     <dl>
       <dt>Microphone</dt><dd id="soundMicrophone">Waiting</dd>
       <dt>Speech model</dt><dd id="soundModel">Waiting</dd>
@@ -177,7 +181,7 @@
     <p id="soundError" role="alert" hidden></p>
   </details>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=15"></script>
-  <script type="module" src="voice-recognition.js?v=15"></script>
+  <script src="app.js?v=16"></script>
+  <script type="module" src="voice-recognition.js?v=16"></script>
 </body>
 </html>

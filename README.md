@@ -17,6 +17,7 @@ Flex Paint is a touch-first, Windows 11 Paint-inspired drawing app made for play
 - Multi-touch protection prevents a second finger from interrupting an active stroke
 - Full-screen button with iPad/iPhone Home Screen fallback
 - Sound colour mode: say a basic colour to select it, using on-device speech recognition
+- Speech is submitted after a short pause at the end of a word, with a large colour-name and confetti celebration on the canvas
 - Responsive phone layout with a swipeable toolbar and single-column color editor
 - 16-step undo history and redo
 - Offline-capable installable web app
