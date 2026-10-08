@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flex Paint sound integration tests</title>
+<style>body{font:16px system-ui;margin:24px}button{padding:16px;margin:4px}pre{white-space:pre-wrap;overflow-wrap:anywhere}iframe{width:100%;height:550px}</style>
+<h1>Sound integration tests</h1>
+<p>First run the built-in test. It uses a known recording of “yellow” and needs no microphone permission. Then test your microphone and say “yellow” when prompted. Audio stays on this device.</p>
+<button id="run">Run built-in test</button><button id="mic">Test microphone</button><pre id="log" role="status"></pre>
+<iframe id="app" src="../index.html"></iframe>
+<script type="module">
+import {audioToMono16k, hasSpeech, matchColor} from '../voice-recognition.js';
+const log = text => document.querySelector('#log').textContent += text + '\n';
+const check = (condition, message) => { if (!condition) throw new Error(message); log('PASS: ' + message); };
+const deadline = (promise, name) => new Promise((resolve,reject) => {
+  const timer = setTimeout(()=>reject(new Error(name + ' timed out after 20 seconds')),20000);
+  promise.then(value=>{clearTimeout(timer);resolve(value)},error=>{clearTimeout(timer);reject(error)});
+});
+async function run(useMic = false) {
+  document.querySelectorAll('button').forEach(button=>button.disabled=true);
+  document.querySelector('#log').textContent = '';
+  let worker, context, inputStream;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    context = new AudioContextClass();
+    // Unlock audio directly in the tap handler, before model-loading awaits.
+    await deadline(context.resume(),'Starting browser audio');
+    log('Browser audio: ' + context.state);
+    if(useMic) {
+      log('Requesting microphone permission…');
+      inputStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      log('PASS: microphone access allowed');
+    }
+    const started = performance.now();
+    worker = new Worker('../voice-worker.js', {type:'module'});
+    const request = (payload, successType) => new Promise((resolve,reject) => {
+      const timer = setTimeout(() => finish(new Error('Timed out waiting for ' + successType)), 180000);
+      function finish(error, data) { clearTimeout(timer); worker.removeEventListener('message', onMessage); worker.removeEventListener('error', onError); error ? reject(error) : resolve(data); }
+      function onError(e) { finish(new Error(e.message)); }
+      function onMessage(e) {
+        if(e.data.type === 'progress') { document.title = 'Loading ' + e.data.progress + '%'; return; }
+        if(e.data.type.endsWith('error')) finish(new Error(e.data.message));
+        else if(e.data.type === successType) finish(null,e.data);
+      }
+      worker.addEventListener('message',onMessage); worker.addEventListener('error',onError); worker.postMessage(payload);
+    });
+    log('Loading actual speech worker and model…');
+    await request({type:'load'},'ready');
+    log('PASS: actual model loaded in ' + Math.round((performance.now()-started)/1000) + 's');
+    if(!useMic) {
+    const blob = await (await fetch('yellow-test.wav')).blob();
+    log('Decoding known recording…');
+    const audio = await deadline(audioToMono16k(blob),'Decoding known recording');
+    check(hasSpeech(audio),'generated Yellow audio passes sound detection');
+    const result = await request({type:'transcribe',id:1,audio},'transcribed');
+    log('Actual transcript: ' + result.text);
+    check(matchColor(result.text)?.name === 'yellow','actual model recognises yellow');
+    const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+    const source = context.createBufferSource(); source.buffer = buffer;
+    const destination = context.createMediaStreamDestination(); source.connect(destination);
+    inputStream = destination.stream;
+    // Start after the recorder is attached below.
+    inputStream.startSample = () => source.start();
+    }
+    const recorder = new MediaRecorder(inputStream);
+    const chunks = [];
+    const recorded = new Promise((resolve,reject) => {
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onerror = e => reject(e.error);
+      recorder.onstop = () => resolve(new Blob(chunks,{type:recorder.mimeType}));
+    });
+    log(useMic ? 'SAY YELLOW NOW — recording for 4.2 seconds…' : 'Recording the known sample through browser audio…');
+    recorder.start(); inputStream.startSample?.(); setTimeout(()=>{if(recorder.state !== 'inactive')recorder.stop()},4200);
+    const recording = await deadline(recorded,'Recording');
+    log('Recorded format: ' + recording.type + ', ' + recording.size + ' bytes');
+    log('Decoding browser recording…');
+    const recordedAudio = await deadline(audioToMono16k(recording),'Decoding browser recording');
+    inputStream.getTracks().forEach(track=>track.stop());
+    check(hasSpeech(recordedAudio),'4.2-second browser recording passes sound detection');
+    const recordedResult = await request({type:'transcribe',id:2,audio:recordedAudio},'transcribed');
+    log('Recorded transcript: ' + recordedResult.text);
+    const match = matchColor(recordedResult.text);
+    check(match?.name === 'yellow','recorded speech recognises yellow');
+    const app = document.querySelector('#app').contentWindow;
+    app.dispatchEvent(new app.CustomEvent('sound-colour-match',{detail:match}));
+    check(app.document.querySelector('#solidColor').value === '#ffd43b','actual app selects yellow');
+    log('ALL TESTS PASSED'); document.title = 'Sound test passed';
+  } catch(error) { log('FAIL: ' + error.message); document.title = 'Sound test failed'; console.error(error); }
+  finally { worker?.terminate(); inputStream?.getTracks().forEach(track=>track.stop()); context?.close().catch(()=>{}); document.querySelectorAll('button').forEach(button=>button.disabled=false); }
+}
+document.querySelector('#run').onclick = () => run(false);
+document.querySelector('#mic').onclick = () => run(true);
+</script>

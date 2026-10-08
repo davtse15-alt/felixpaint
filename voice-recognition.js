@@ -295,3 +295,5 @@ function stopListening() {
 
 window.addEventListener('sound-colour-start', () => { void startListening(); });
 window.addEventListener('sound-colour-stop', stopListening);
+
+export { audioToMono16k, hasSpeech, matchColor };
