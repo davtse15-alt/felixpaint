@@ -17,6 +17,11 @@ const colors = {
   gray: '#89909d'
 };
 
+const colorAliases = {
+  yellow: ['yello', 'wellow', 'lellow'],
+  purple: ['perple', 'purpl']
+};
+
 let active = false;
 let sessionId = 0;
 let stream = null;
@@ -46,7 +51,7 @@ function fail(message, currentSession) {
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=13', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=14', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
     workerReadyResolve = resolve;
     workerReadyReject = reject;
@@ -100,9 +105,10 @@ function transcribe(audio) {
 }
 
 function matchColor(transcript) {
-  const words = transcript.toLowerCase();
+  const words = transcript.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
   for (const [name, color] of Object.entries(colors)) {
-    if (new RegExp(`\\b${name}\\b`, 'i').test(words)) {
+    const namesToMatch = [name, ...(colorAliases[name] || [])];
+    if (namesToMatch.some(candidate => new RegExp(`\\b${candidate}\\b`, 'i').test(words))) {
       const displayName = name === 'gray' ? 'grey' : name;
       return { name: displayName, color };
     }
@@ -147,8 +153,11 @@ async function transcribeClip(blob, currentSession) {
     if (!active || currentSession !== sessionId) return;
     const transcript = await transcribe(audio);
     if (!active || currentSession !== sessionId) return;
+    const heard = transcript.trim();
+    if (!heard) return;
     const match = matchColor(transcript);
     if (match) window.dispatchEvent(new CustomEvent('sound-colour-match', { detail: match }));
+    else window.dispatchEvent(new CustomEvent('sound-colour-heard', { detail: { transcript: heard } }));
   } catch (_) {
     // Skip a clip the browser could not decode and keep the next one available.
   } finally {

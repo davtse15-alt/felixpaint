@@ -630,6 +630,9 @@
     setMode('solid');
     showToast(`${name[0].toUpperCase()}${name.slice(1)}!`);
   });
+  window.addEventListener('sound-colour-heard', event => {
+    showToast(`Heard: “${event.detail.transcript}”`);
+  });
   window.addEventListener('sound-colour-error', event => {
     state.voiceEnabled = false;
     state.voiceStatus = '';
