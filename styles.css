@@ -25,12 +25,16 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .app-mode.active { border-color: #a9c9fb; background: white; color: #075ecc; box-shadow: 0 1px 3px rgba(20,50,90,.12); }
 .title-actions { display: flex; align-items: center; gap: 7px; }
 .quick-actions { display: flex; align-items: center; gap: 5px; }
-.icon-button, .clear-button, .mini-button, .lock-button, .fullscreen-button { border: 1px solid transparent; background: transparent; border-radius: 9px; min-height: 42px; }
+.icon-button, .clear-button, .mini-button, .lock-button, .fullscreen-button, .sound-button { border: 1px solid transparent; background: transparent; border-radius: 9px; min-height: 42px; }
 .icon-button { width: 46px; font-size: 26px; line-height: 1; }
 .icon-button:disabled { opacity: .3; }
 .clear-button { padding: 0 16px; background: #fff; border-color: #d7dae4; font-size: 13px; }
 .lock-button { position: relative; overflow: hidden; min-width: 124px; padding: 0 13px; border-color: #bfd4f7; background: #edf5ff; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 13px; font-weight: 600; }
 .fullscreen-button { min-width: 108px; padding: 0 12px; border-color: #d6d9e2; background: #fff; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 13px; }
+.sound-button { min-width: 134px; padding: 0 12px; border-color: #d9c9f4; background: #f6f0ff; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 13px; font-weight: 600; }
+.sound-button.listening { border-color: #a783e5; background: #eee3ff; color: #6039a3; box-shadow: 0 0 0 3px rgba(145, 105, 210, .13); }
+.sound-button.listening > span:first-child { animation: mic-pulse 1.2s ease-in-out infinite; }
+@keyframes mic-pulse { 50% { transform: scale(1.18); } }
 .fullscreen-button > span:first-child { font-size: 20px; line-height: 1; }
 .lock-button > * { position: relative; z-index: 1; }
 .lock-button.holding::after { content: ""; position: absolute; inset: 0; right: 100%; background: #cde2ff; animation: unlock-fill 1.5s linear forwards; }
@@ -184,7 +188,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .quick-actions { gap: 2px; }
   .icon-button { width: 40px; }
   .clear-button { width: 40px; padding: 0; }
-  .fullscreen-button, .lock-button { min-width: 44px; width: 44px; padding: 0; }
+  .fullscreen-button, .lock-button, .sound-button { min-width: 44px; width: 44px; padding: 0; }
+  .sound-button .sound-label { display: none; }
   .ribbon { min-height: 90px; padding: 6px 7px; scroll-snap-type: x proximity; }
   .tool-group { scroll-snap-align: start; }
   .tool { width: 62px; height: 76px; }
@@ -213,7 +218,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
 @media (max-width: 380px) {
   .icon-button { width: 36px; }
-  .fullscreen-button, .lock-button, .clear-button { width: 40px; min-width: 40px; }
+  .fullscreen-button, .lock-button, .sound-button, .clear-button { width: 40px; min-width: 40px; }
   .basic-colors { grid-template-columns: repeat(4, 42px); }
   .quick-color { width: 42px; height: 38px; }
 }

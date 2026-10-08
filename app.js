@@ -21,6 +21,8 @@
     repeat: 180,
     symmetry: 'none',
     littleHands: false,
+    voiceEnabled: false,
+    voiceRecognition: null,
     drawing: false,
     activePointerId: null,
     moved: false,
@@ -50,6 +52,20 @@
     '#8b5b3e', '#89909d', '#65c8ff', '#1d4f91', '#9eea5d',
     '#147f55', '#ffbd91', '#ff7898', '#7b465e', '#d6b58c'
   ];
+  const spokenColors = {
+    red: ['#ed3349', ['red']],
+    orange: ['#ff8a24', ['orange']],
+    yellow: ['#ffd43b', ['yellow']],
+    green: ['#42bd62', ['green']],
+    blue: ['#3478f6', ['blue']],
+    purple: ['#684bd9', ['purple']],
+    violet: ['#8b5cf6', ['violet']],
+    pink: ['#d448c2', ['pink']],
+    brown: ['#8b5b3e', ['brown']],
+    black: ['#111111', ['black']],
+    white: ['#ffffff', ['white']],
+    grey: ['#89909d', ['grey', 'gray']]
+  };
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -601,6 +617,86 @@
     $('#colorPanelBtn').setAttribute('aria-expanded', open);
   }
 
+  function setSoundMode(enabled) {
+    const button = $('#soundBtn');
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      state.voiceEnabled = false;
+      button.setAttribute('aria-pressed', 'false');
+      showToast('Voice colours are not available in this browser');
+      return;
+    }
+
+    if (enabled) {
+      if (!state.voiceRecognition) {
+        const recognition = new Recognition();
+        recognition.lang = 'en-GB';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.onresult = event => {
+          for (let index = event.resultIndex; index < event.results.length; index += 1) {
+            if (!event.results[index].isFinal) continue;
+            const words = event.results[index][0].transcript.toLowerCase();
+            for (const [name, [color, aliases]] of Object.entries(spokenColors)) {
+              if (aliases.some(alias => new RegExp(`\\b${alias}\\b`, 'i').test(words))) {
+                state.solid = color;
+                $('#solidColor').value = color;
+                syncSpectrumFromSolid();
+                setMode('solid');
+                showToast(`${name[0].toUpperCase()}${name.slice(1)}!`);
+                return;
+              }
+            }
+          }
+        };
+        recognition.onerror = event => {
+          if (['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported', 'network'].includes(event.error)) {
+            state.voiceEnabled = false;
+            updateSoundButton();
+            const message = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+              ? 'Allow microphone access to use sound colours'
+              : 'Sound colours could not start. Try Safari with Siri enabled';
+            showToast(message);
+          }
+        };
+        recognition.onend = () => {
+          if (state.voiceEnabled) {
+            clearTimeout(state.voiceRestartTimer);
+            state.voiceRestartTimer = setTimeout(() => {
+              if (!state.voiceEnabled) return;
+              try { recognition.start(); } catch (_) { /* already starting */ }
+            }, 300);
+          }
+        };
+        state.voiceRecognition = recognition;
+      }
+      state.voiceEnabled = true;
+      updateSoundButton();
+      try {
+        state.voiceRecognition.start();
+        showToast('Listening for colours');
+      } catch (_) {
+        state.voiceEnabled = false;
+        updateSoundButton();
+        showToast('Could not start listening. Tap to try again');
+      }
+    } else {
+      state.voiceEnabled = false;
+      clearTimeout(state.voiceRestartTimer);
+      if (state.voiceRecognition) state.voiceRecognition.stop();
+      updateSoundButton();
+      showToast('Sound colours off');
+    }
+  }
+
+  function updateSoundButton() {
+    const button = $('#soundBtn');
+    button.setAttribute('aria-pressed', state.voiceEnabled);
+    button.setAttribute('aria-label', state.voiceEnabled ? 'Turn off sound colour mode' : 'Turn on sound colour mode');
+    button.classList.toggle('listening', state.voiceEnabled);
+    button.querySelector('.sound-label').textContent = state.voiceEnabled ? 'Listening…' : 'Sound colours';
+  }
+
   function setLittleHands(enabled) {
     state.littleHands = enabled;
     const shell = $('.app-shell');
@@ -691,6 +787,7 @@
     $('#solidColor').addEventListener('input', event => { state.solid = event.target.value; syncSpectrumFromSolid(); setMode('solid'); });
     $('#repeatRange').addEventListener('input', event => { state.repeat = Number(event.target.value); });
     $('#colorPanelBtn').addEventListener('click', () => toggleColorPanel());
+    $('#soundBtn').addEventListener('click', () => setSoundMode(!state.voiceEnabled));
     $('#fullscreenBtn').addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', updateFullscreenButton);
     document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
