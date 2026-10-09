@@ -7,7 +7,7 @@
 <p>First run the built-in test. It uses a known recording of “yellow” and needs no microphone permission. Then test your microphone and say “yellow” when prompted. Audio stays on this device.</p>
 <button id="run">Run built-in test</button><button id="mic">Test microphone</button><pre id="log" role="status"></pre>
 <button id="preview">Preview colour celebration</button>
-<iframe id="app" src="../index.html?test=16"></iframe>
+<iframe id="app" src="../index.html?test=17"></iframe>
 <script type="module">
 import {audioToMono16k, hasSpeech, matchColor, shouldFinishClip} from '../voice-recognition.js';
 const log = text => document.querySelector('#log').textContent += text + '\n';
@@ -95,6 +95,21 @@ async function run(useMic = false) {
     if(!app.matchMedia('(prefers-reduced-motion: reduce)').matches) check(celebration.querySelectorAll('.colour-confetti i').length === 48,'confetti burst is present');
     await new Promise(resolve=>setTimeout(resolve,2600));
     check(celebration.hidden,'celebration clears itself');
+    for (const word of ['indigo', 'violet']) {
+      const colour = matchColor(word);
+      check(colour?.name === word,word + ' voice command matches');
+      app.dispatchEvent(new app.CustomEvent('sound-colour-match',{detail:colour}));
+      check(app.document.querySelector('#solidColor').value === colour.color,word + ' selects its solid colour');
+    }
+    for (const word of ['rainbow','multicolor','multicolour','multi color','multi-colour']) {
+      const command = matchColor(word);
+      check(command?.mode === 'rainbow',word + ' maps to rainbow');
+      app.dispatchEvent(new app.CustomEvent('sound-colour-match',{detail:command}));
+      check(app.document.querySelector('[data-mode="rainbow"]').getAttribute('aria-pressed') === 'true',word + ' selects actual rainbow drawing mode');
+      check(celebration.classList.contains('rainbow-celebration'),'rainbow lettering is enabled');
+    }
+    app.dispatchEvent(new app.CustomEvent('sound-colour-match',{detail:matchColor('violet')}));
+    check(app.document.querySelector('[data-mode="solid"]').getAttribute('aria-pressed') === 'true','violet switches back to solid after rainbow');
     log('ALL TESTS PASSED'); document.title = 'Sound test passed';
   } catch(error) { log('FAIL: ' + error.message); document.title = 'Sound test failed'; console.error(error); }
   finally { worker?.terminate(); inputStream?.getTracks().forEach(track=>track.stop()); context?.close().catch(()=>{}); document.querySelectorAll('button').forEach(button=>button.disabled=false); }

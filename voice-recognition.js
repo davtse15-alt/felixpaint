@@ -8,6 +8,7 @@ const colors = {
   yellow: '#ffd43b',
   green: '#42bd62',
   blue: '#3478f6',
+  indigo: '#4b0082',
   purple: '#684bd9',
   violet: '#8b5cf6',
   pink: '#d448c2',
@@ -60,7 +61,7 @@ function fail(message, currentSession) {
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=16', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=17', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
     const loadTimeout = setTimeout(() => workerReadyReject?.(new Error('Speech model loading timed out. Check your connection and try again.')), 120000);
     workerReadyResolve = () => { clearTimeout(loadTimeout); resolve(); };
@@ -128,6 +129,9 @@ function transcribe(audio) {
 
 function matchColor(transcript) {
   const words = transcript.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+  if (/\b(?:rainbow|multi\s*colou?rs?)\b/.test(words)) {
+    return { name: 'rainbow', mode: 'rainbow', color: '#ff8a24' };
+  }
   for (const [name, color] of Object.entries(colors)) {
     const namesToMatch = [name, ...(colorAliases[name] || [])];
     if (namesToMatch.some(candidate => new RegExp(`\\b${candidate}\\b`, 'i').test(words))) {

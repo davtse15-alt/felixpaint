@@ -50,7 +50,7 @@
     '#111111', '#ffffff', '#ed3349', '#ff8a24', '#ffd43b',
     '#42bd62', '#19bfc4', '#3478f6', '#684bd9', '#d448c2',
     '#8b5b3e', '#89909d', '#65c8ff', '#1d4f91', '#9eea5d',
-    '#147f55', '#ffbd91', '#ff7898', '#7b465e', '#d6b58c'
+    '#147f55', '#ffbd91', '#ff7898', '#7b465e', '#d6b58c', '#4b0082', '#8b5cf6'
   ];
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -643,6 +643,7 @@
     const celebration = $('#colourCelebration');
     clearTimeout(celebrationTimer);
     celebration.hidden = false;
+    celebration.classList.toggle('rainbow-celebration', name === 'rainbow');
     celebration.style.setProperty('--celebration-colour', color);
     celebration.querySelector('.colour-word').textContent = name.toUpperCase() + '!';
     const confetti = celebration.querySelector('.colour-confetti');
@@ -652,6 +653,7 @@
         const piece = document.createElement('i');
         piece.style.cssText = `left:${Math.random() * 100}%;background:${i % 3 ? color : ['#ff4da6', '#43d9ff', '#ffdb3b'][Math.floor(i / 3) % 3]};--drift:${(Math.random() - .5) * 240}px;--spin:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * .35}s`;
         confetti.append(piece);
+        if (name === 'rainbow') piece.style.background = ['#ed3349', '#ff8a24', '#ffd43b', '#42bd62', '#3478f6', '#4b0082', '#8b5cf6'][i % 7];
       }
     }
     celebration.classList.remove('celebrating');
@@ -664,11 +666,15 @@
   }
 
   window.addEventListener('sound-colour-match', event => {
-    const { name, color } = event.detail;
-    state.solid = color;
-    $('#solidColor').value = color;
-    syncSpectrumFromSolid();
-    setMode('solid');
+    const { name, color, mode } = event.detail;
+    if (mode === 'rainbow') {
+      setMode('rainbow');
+    } else {
+      state.solid = color;
+      $('#solidColor').value = color;
+      syncSpectrumFromSolid();
+      setMode('solid');
+    }
     celebrateColour(name, color);
     showToast(`${name[0].toUpperCase()}${name.slice(1)}!`);
   });
@@ -839,7 +845,7 @@
       const button = document.createElement('button');
       button.className = 'quick-color';
       button.style.background = color;
-      button.setAttribute('aria-label', `Use ${color}`);
+      button.setAttribute('aria-label', `Use ${{ '#4b0082': 'indigo', '#8b5cf6': 'violet' }[color] || color}`);
       button.addEventListener('click', () => { state.solid = color; $('#solidColor').value = color; syncSpectrumFromSolid(); setMode('solid'); });
       quickTarget.append(button);
     });
