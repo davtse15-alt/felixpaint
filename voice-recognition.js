@@ -72,7 +72,7 @@ function fail(message, currentSession) {
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=18', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=19', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
     const loadTimeout = setTimeout(() => workerReadyReject?.(new Error('Speech model loading timed out. Check your connection and try again.')), 120000);
     workerReadyResolve = () => { clearTimeout(loadTimeout); resolve(); };
@@ -179,6 +179,23 @@ function matchColor(transcript) {
   return { name: best.name, color: colors[best.name] };
 }
 
+function findColorMention(transcript) {
+  const words = transcript.toLowerCase().replace(/[^a-z]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+  const found = new Map();
+  for (const word of words) {
+    if (/^(?:rainbow|multicolou?r)$/.test(word)) found.set('rainbow', { name: 'rainbow', mode: 'rainbow', color: '#ff8a24' });
+    for (const name of spokenColors) {
+      if ([name, ...(colorAliases[name] || [])].includes(word)) {
+        const displayName = name === 'gray' ? 'grey' : name;
+        found.set(displayName, { name: displayName, color: colors[name] });
+      }
+    }
+  }
+  // If the speaker mentions more than one colour, leave the choice to them.
+  return found.size === 1 ? [...found.values()][0] : null;
+}
+
 async function audioToMono16k(blob) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const OfflineAudioContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
@@ -254,7 +271,11 @@ async function transcribeClip(blob, currentSession) {
     if (!heard) return;
     const match = matchColor(transcript);
     if (match) window.dispatchEvent(new CustomEvent('sound-colour-match', { detail: match }));
-    else window.dispatchEvent(new CustomEvent('sound-colour-heard', { detail: { transcript: heard, retry: heard.split(/\s+/).length === 1 } }));
+    else {
+      const mentioned = findColorMention(transcript);
+      if (mentioned) window.dispatchEvent(new CustomEvent('sound-colour-preview', { detail: mentioned }));
+      else window.dispatchEvent(new CustomEvent('sound-colour-heard', { detail: { transcript: heard, retry: heard.split(/\s+/).length === 1 } }));
+    }
   } catch (error) {
     fail(`${stage}: ${error?.message || String(error)}`, currentSession);
   } finally {
@@ -398,4 +419,4 @@ function stopListening() {
 window.addEventListener('sound-colour-start', () => { void startListening(); });
 window.addEventListener('sound-colour-stop', stopListening);
 
-export { audioToMono16k, hasSpeech, matchColor, shouldFinishClip };
+export { audioToMono16k, findColorMention, hasSpeech, matchColor, shouldFinishClip };

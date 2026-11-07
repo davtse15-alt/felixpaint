@@ -639,16 +639,17 @@
     if (selector) $(selector).textContent = event.detail.value;
   });
   let celebrationTimer;
-  function celebrateColour(name, color) {
+  function celebrateColour(name, color, preview = false) {
     const celebration = $('#colourCelebration');
     clearTimeout(celebrationTimer);
     celebration.hidden = false;
+    celebration.classList.toggle('colour-preview', preview);
     celebration.classList.toggle('rainbow-celebration', name === 'rainbow');
     celebration.style.setProperty('--celebration-colour', color);
     celebration.querySelector('.colour-word').textContent = name.toUpperCase() + '!';
     const confetti = celebration.querySelector('.colour-confetti');
     confetti.replaceChildren();
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (!preview && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       for (let i = 0; i < 48; i++) {
         const piece = document.createElement('i');
         piece.style.cssText = `left:${Math.random() * 100}%;background:${i % 3 ? color : ['#ff4da6', '#43d9ff', '#ffdb3b'][Math.floor(i / 3) % 3]};--drift:${(Math.random() - .5) * 240}px;--spin:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * .35}s`;
@@ -661,8 +662,9 @@
     celebration.classList.add('celebrating');
     celebrationTimer = setTimeout(() => {
       celebration.hidden = true;
+      celebration.classList.remove('colour-preview');
       confetti.replaceChildren();
-    }, 2400);
+    }, preview ? 1200 : 2400);
   }
 
   window.addEventListener('sound-colour-match', event => {
@@ -677,6 +679,9 @@
     }
     celebrateColour(name, color);
     showToast(`${name[0].toUpperCase()}${name.slice(1)}!`);
+  });
+  window.addEventListener('sound-colour-preview', event => {
+    celebrateColour(event.detail.name, event.detail.color, true);
   });
   window.addEventListener('sound-colour-heard', event => {
     if (event.detail.retry) showToast('Lovely try! Say just one colour again.');
