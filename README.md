@@ -16,7 +16,7 @@ Flex Paint is a touch-first, Windows 11 Paint-inspired drawing app made for play
 - **Little hands mode** hides the controls and requires a deliberate press-and-hold to unlock
 - Multi-touch protection prevents a second finger from interrupting an active stroke
 - Full-screen button with iPad/iPhone Home Screen fallback
-- Sound colour mode: say a basic colour to select it, using on-device speech recognition
+- Sound colour mode: say one short colour attempt to select it, using on-device speech recognition. Toddler-friendly pronunciations are supported; sentence-length speech is ignored.
 - Speech is submitted after a short pause at the end of a word, with a large colour-name and confetti celebration on the canvas
 - Responsive phone layout with a swipeable toolbar and single-column color editor
 - 16-step undo history and redo
@@ -46,3 +46,5 @@ The installed app requests full-screen display. When using ordinary Safari inste
 After the first successful load, the service worker caches the application so it can continue to open without a connection.
 
 Sound colour mode needs microphone access and an internet connection the first time so it can download its speech model (about 45 MB). Once downloaded, speech is processed locally and is not sent to a speech service. The model can be cached by the browser for later use.
+
+Sound colour mode listens in short clips (up to about 2 seconds) and ends a phrase after roughly 550 ms of silence. It uses adaptive background-noise tracking and accepts a single-word attempt only; mentioning a colour within a sentence does not change the paint. It recognizes common child pronunciations such as “boo” for blue and “lello” for yellow. Parent-recorded pronunciation training is not included: the current Whisper model cannot learn from a handful of local recordings without a separate on-device adaptation pipeline. No child recordings are saved.

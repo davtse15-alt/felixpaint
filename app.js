@@ -679,7 +679,7 @@
     showToast(`${name[0].toUpperCase()}${name.slice(1)}!`);
   });
   window.addEventListener('sound-colour-heard', event => {
-    showToast(`Heard: “${event.detail.transcript}”`);
+    if (event.detail.retry) showToast('Lovely try! Say just one colour again.');
   });
   window.addEventListener('sound-colour-error', event => {
     $('#soundCheck').hidden = false;

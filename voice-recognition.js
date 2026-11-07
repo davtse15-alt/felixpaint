@@ -1,6 +1,7 @@
 const SAMPLE_RATE = 16000;
-const CLIP_LENGTH_MS = 3000;
-const SILENCE_MS = 300;
+const CLIP_LENGTH_MS = 2000;
+const SILENCE_MS = 550;
+const MIN_SPEECH_MS = 120;
 
 const colors = {
   red: '#ed3349',
@@ -20,9 +21,19 @@ const colors = {
 };
 
 const colorAliases = {
-  yellow: ['yello', 'wellow', 'lellow'],
-  purple: ['perple', 'purpl']
+  red: ['weh', 'wed', 'eh', 're'],
+  blue: ['boo', 'bu', 'bloo', 'bwoo'],
+  green: ['geen', 'gween', 'een'],
+  yellow: ['yello', 'wellow', 'lellow', 'lello', 'yeyo', 'leyo', 'yewo'],
+  purple: ['perple', 'purpl', 'puh', 'puhpo'],
+  orange: ['ow', 'ornj', 'wange'],
+  pink: ['pi', 'pih', 'pin'],
+  brown: ['bown', 'bwow'],
+  black: ['bwak', 'bak'],
+  white: ['wite', 'why']
 };
+
+const spokenColors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown', 'black', 'white', 'indigo', 'violet', 'grey', 'gray'];
 
 let active = false;
 let sessionId = 0;
@@ -61,7 +72,7 @@ function fail(message, currentSession) {
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=17', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=18', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
     const loadTimeout = setTimeout(() => workerReadyReject?.(new Error('Speech model loading timed out. Check your connection and try again.')), 120000);
     workerReadyResolve = () => { clearTimeout(loadTimeout); resolve(); };
@@ -127,19 +138,45 @@ function transcribe(audio) {
   });
 }
 
+function phoneticKey(word) {
+  return word.toLowerCase().replace(/ph/g, 'f').replace(/wh/g, 'w').replace(/(.)\1+/g, '$1')
+    .replace(/[aeiou]/g, (v, index) => index === 0 ? v : '').replace(/c/g, 'k').replace(/q/g, 'k').replace(/x/g, 'ks');
+}
+
+function editSimilarity(a, b) {
+  const rows = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j += 1) rows[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) for (let j = 1; j <= b.length; j += 1) {
+    rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  }
+  return 1 - rows[a.length][b.length] / Math.max(a.length, b.length, 1);
+}
+
 function matchColor(transcript) {
   const words = transcript.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
-  if (/\b(?:rainbow|multi\s*colou?rs?)\b/.test(words)) {
+  if (/^(?:rainbow|multicolou?r|multi colou?r)$/.test(words)) {
     return { name: 'rainbow', mode: 'rainbow', color: '#ff8a24' };
   }
-  for (const [name, color] of Object.entries(colors)) {
-    const namesToMatch = [name, ...(colorAliases[name] || [])];
-    if (namesToMatch.some(candidate => new RegExp(`\\b${candidate}\\b`, 'i').test(words))) {
-      const displayName = name === 'gray' ? 'grey' : name;
-      return { name: displayName, color };
-    }
-  }
-  return null;
+  // Colour mode is a one-word game. Reject conversational context before doing
+  // phonetic matching so a colour mentioned in a sentence can never activate.
+  if (!words || words.split(' ').length !== 1) return null;
+  const utterance = words;
+  const key = phoneticKey(utterance);
+  const candidates = spokenColors.map(name => {
+    const forms = [name, ...(colorAliases[name] || [])];
+    const score = Math.max(...forms.map(form => {
+      const exactAlias = form === utterance;
+      const phonetic = editSimilarity(phoneticKey(form), key);
+      const spelling = editSimilarity(form, utterance);
+      return exactAlias ? 1 : Math.max(phonetic * 0.96, spelling * 0.88);
+    }));
+    return { name, score };
+  }).sort((a, b) => b.score - a.score);
+  const [best, second] = candidates;
+  // Exact toddler aliases are strong evidence; fuzzy candidates need a high
+  // score and clear margin to avoid choosing between similar short sounds.
+  if (best.score < 0.72 || (best.score < 0.94 && best.score - second.score < 0.12)) return null;
+  return { name: best.name, color: colors[best.name] };
 }
 
 async function audioToMono16k(blob) {
@@ -163,14 +200,22 @@ async function audioToMono16k(blob) {
   }
 }
 
-function hasSpeech(audio) {
+function rms(audio) {
   let sum = 0;
   for (let index = 0; index < audio.length; index += 1) sum += audio[index] * audio[index];
-  return audio.length > 0 && Math.sqrt(sum / audio.length) > 0.006;
+  return audio.length > 0 ? Math.sqrt(sum / audio.length) : 0;
 }
 
 function shouldFinishClip(elapsed, lastSpeech, now) {
-  return elapsed >= CLIP_LENGTH_MS || (elapsed >= 450 && lastSpeech !== null && now - lastSpeech >= SILENCE_MS);
+  return elapsed >= CLIP_LENGTH_MS || (elapsed >= 350 && lastSpeech !== null && now - lastSpeech >= SILENCE_MS);
+}
+
+function hasSpeech(audio) {
+  const frameLength = Math.max(1, Math.round(SAMPLE_RATE * 0.02));
+  for (let start = 0; start < audio.length; start += frameLength) {
+    if (rms(audio.subarray(start, Math.min(start + frameLength, audio.length))) > 0.002) return true;
+  }
+  return false;
 }
 
 function closeAudioMonitor() {
@@ -209,7 +254,7 @@ async function transcribeClip(blob, currentSession) {
     if (!heard) return;
     const match = matchColor(transcript);
     if (match) window.dispatchEvent(new CustomEvent('sound-colour-match', { detail: match }));
-    else window.dispatchEvent(new CustomEvent('sound-colour-heard', { detail: { transcript: heard } }));
+    else window.dispatchEvent(new CustomEvent('sound-colour-heard', { detail: { transcript: heard, retry: heard.split(/\s+/).length === 1 } }));
   } catch (error) {
     fail(`${stage}: ${error?.message || String(error)}`, currentSession);
   } finally {
@@ -242,16 +287,26 @@ function recordSegment(currentSession) {
     segmentRecorder.start();
     const started = performance.now();
     let lastSpeech = null;
+    let noiseFloor = 0.001;
+    let speechStarted = null;
     const samples = analyser ? new Float32Array(analyser.fftSize) : null;
     const watch = () => {
       if (!active || currentSession !== sessionId || segmentRecorder.state !== 'recording') return;
       const now = performance.now();
       if (analyser && samples) {
         analyser.getFloatTimeDomainData(samples);
-        if (hasSpeech(samples)) lastSpeech = now;
+        const level = rms(samples);
+        // Track background noise slowly, and only while it is below the current
+        // speech boundary. This adapts to room noise without raising a hard gate.
+        const boundary = Math.max(0.0025, noiseFloor * 2.2);
+        if (level < boundary) noiseFloor = noiseFloor * 0.96 + level * 0.04;
+        if (level > Math.max(0.0025, noiseFloor * 2.2)) {
+          speechStarted ??= now;
+          if (now - speechStarted >= 60) lastSpeech = now;
+        } else if (lastSpeech === null) speechStarted = null;
       }
       const monitored = analyser && captureContext?.state === 'running';
-      if (monitored ? shouldFinishClip(now - started, lastSpeech, now) : now - started >= 1500) {
+      if (monitored ? shouldFinishClip(now - started, lastSpeech, now) && (lastSpeech === null || now - started >= MIN_SPEECH_MS) : now - started >= CLIP_LENGTH_MS) {
         segmentRecorder.stop();
       } else segmentTimer = setTimeout(watch, 50);
     };
