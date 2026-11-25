@@ -30,7 +30,7 @@ self.addEventListener('message', async event => {
     try {
       const result = await transcriber(audio, {
         // This English-only model rejects explicit language/task options.
-        max_new_tokens: 8,
+        max_new_tokens: 32,
         do_sample: false
       });
       self.postMessage({ type: 'transcribed', id, text: result.text || '' });

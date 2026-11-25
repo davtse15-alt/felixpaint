@@ -1,6 +1,9 @@
 const SAMPLE_RATE = 16000;
 const CLIP_LENGTH_MS = 3000;
 const SILENCE_MS = 300;
+const LIVE_SILENCE_MS = 480;
+const LIVE_MAX_CLIP_MS = 4000;
+const MAX_PENDING_CLIPS = 2;
 
 const colors = {
   red: '#ed3349',
@@ -20,9 +23,30 @@ const colors = {
 };
 
 const colorAliases = {
-  yellow: ['yello', 'wellow', 'lellow'],
-  purple: ['perple', 'purpl']
+  rainbow: ['rainbows', 'rainbo', 'wainbow', 'rambo', 'rain bow', 'multicolor', 'multicolour', 'multi color', 'multi colour'],
+  red: ['redd', 'reds', 'wed', 'rad', 'read', 'wred'],
+  orange: ['oranges', 'owange', 'oranje', 'ornge', 'orng', 'oringe', 'orenge', 'orang', 'arenge', 'arange'],
+  yellow: ['yellows', 'yello', 'wellow', 'lellow', 'yella', 'yallow', 'yelo', 'yell', 'lalo', 'jello', 'yalow'],
+  green: ['greens', 'gween', 'geen', 'grean', 'greene', 'creen', 'grin', 'gwin', 'gleen'],
+  blue: ['blues', 'bloo', 'blew', 'bwoo', 'blu', 'boo', 'bwue', 'bue', 'glue'],
+  indigo: ['indico', 'indego', 'indago', 'endigo', 'in the go', 'in to go'],
+  purple: ['purples', 'perple', 'purpl', 'pupple', 'purpo', 'puhple', 'porple', 'burple', 'parple', 'purpul', 'pople', 'bople'],
+  violet: ['violets', 'viola', 'vilet', 'vialet', 'by let', 'vy let', 'voilet'],
+  pink: ['pinks', 'pinc', 'peenk', 'pank', 'bink', 'tink', 'ping', 'pynk', 'pinky'],
+  brown: ['browns', 'bwown', 'bown', 'brawn', 'braun', 'broun', 'bround', 'bwon'],
+  black: ['blacks', 'bwack', 'blak', 'blac', 'blaq', 'bwaq'],
+  white: ['whites', 'wite', 'wyte', 'whight', 'wight', 'whyt', 'wyt'],
+  grey: ['greys', 'gway', 'gwey', 'grae'],
+  gray: ['grays']
 };
+
+const fuzzyTargets = ['orange', 'yellow', 'green', 'indigo', 'purple', 'violet', 'brown', 'black', 'rainbow'];
+const fuzzyBlocklist = new Set([
+  'great', 'below', 'grown', 'blank', 'block', 'while', 'write', 'where',
+  'there', 'three', 'bring', 'back', 'right', 'light', 'people', 'around',
+  'ground', 'found', 'sound', 'round', 'plate', 'place', 'break', 'bread',
+  'clean', 'queen', 'screen', 'sleep', 'sweet', 'range', 'change', 'strange'
+]);
 
 let active = false;
 let sessionId = 0;
@@ -30,6 +54,7 @@ let stream = null;
 let recorder = null;
 let segmentTimer = null;
 let captureContext = null;
+let decodeContext = null;
 let analyser = null;
 let microphoneSource = null;
 let worker = null;
@@ -37,6 +62,8 @@ let workerReadyPromise = null;
 let workerReadyResolve = null;
 let workerReadyReject = null;
 let nextJobId = 0;
+let processingQueue = false;
+const pendingClips = [];
 const transcriptionJobs = new Map();
 
 function status(message) {
@@ -51,6 +78,8 @@ function fail(message, currentSession) {
   if (currentSession !== sessionId) return;
   active = false;
   clearTimeout(segmentTimer);
+  pendingClips.length = 0;
+  processingQueue = false;
   if (recorder && recorder.state !== 'inactive') recorder.stop();
   recorder = null;
   stream?.getTracks().forEach(track => track.stop());
@@ -61,7 +90,7 @@ function fail(message, currentSession) {
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=18', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=19', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
     const loadTimeout = setTimeout(() => workerReadyReject?.(new Error('Speech model loading timed out. Check your connection and try again.')), 120000);
     workerReadyResolve = () => { clearTimeout(loadTimeout); resolve(); };
@@ -127,27 +156,87 @@ function transcribe(audio) {
   });
 }
 
-function matchColor(transcript) {
-  const words = transcript.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
-  if (/\b(?:rainbow|multi\s*colou?rs?)\b/.test(words)) {
-    return { name: 'rainbow', mode: 'rainbow', color: '#ff8a24' };
-  }
-  for (const [name, color] of Object.entries(colors)) {
-    const namesToMatch = [name, ...(colorAliases[name] || [])];
-    if (namesToMatch.some(candidate => new RegExp(`\\b${candidate}\\b`, 'i').test(words))) {
-      const displayName = name === 'gray' ? 'grey' : name;
-      return { name: displayName, color };
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    let diag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const next = prev[j];
+      prev[j] = a[i - 1] === b[j - 1] ? diag : 1 + Math.min(diag, prev[j], prev[j - 1]);
+      diag = next;
     }
   }
-  return null;
+  return prev[b.length];
 }
 
-async function audioToMono16k(blob) {
+function makeColorMatch(name) {
+  if (name === 'rainbow') return { name: 'rainbow', mode: 'rainbow', color: '#ff8a24' };
+  const displayName = name === 'gray' ? 'grey' : name;
+  return { name: displayName, color: colors[name] };
+}
+
+function matchColor(transcript) {
+  const cleaned = transcript.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+  if (!cleaned) return null;
+
+  let best = null;
+  const consider = (name, endIndex, priority) => {
+    if (!best || endIndex > best.endIndex || (endIndex === best.endIndex && priority > best.priority)) {
+      best = { name, endIndex, priority };
+    }
+  };
+
+  // 1. Exact & toddler-alias phrase matching (last colour mentioned in sentence wins)
+  const allTargets = ['rainbow', ...Object.keys(colors)];
+  for (const name of allTargets) {
+    const candidates = [name, ...(colorAliases[name] || [])];
+    for (const candidate of candidates) {
+      const pattern = new RegExp(`\\b${candidate.replace(/\s+/g, '\\s+')}\\b`, 'gi');
+      let match;
+      while ((match = pattern.exec(cleaned)) !== null) {
+        consider(name, match.index + match[0].length, candidate === name ? 3 : 2);
+      }
+    }
+  }
+  if (best) return makeColorMatch(best.name);
+
+  // 2. Fuzzy + elongated-letter + w->r/l phonetic fallback for young children
+  const tokenPattern = /[a-z]+/g;
+  let tokenMatch;
+  while ((tokenMatch = tokenPattern.exec(cleaned)) !== null) {
+    const raw = tokenMatch[0];
+    if (raw.length < 3 || fuzzyBlocklist.has(raw)) continue;
+    const squashed = raw.replace(/(.)\1+/g, '$1');
+    const variants = [raw, squashed];
+    if (raw.includes('w')) {
+      variants.push(raw.replace(/w/g, 'r'), raw.replace(/w/g, 'l'));
+    }
+    for (const variant of variants) {
+      if (variant === 'rainbow' || colors[variant]) {
+        consider(variant, tokenMatch.index + raw.length, 2);
+        break;
+      }
+      if (variant.length < 4) continue;
+      for (const target of fuzzyTargets) {
+        if (editDistance(variant, target) <= 1) {
+          consider(target, tokenMatch.index + raw.length, 1);
+          break;
+        }
+      }
+    }
+  }
+  return best ? makeColorMatch(best.name) : null;
+}
+
+async function audioToMono16k(blob, sharedContext = null) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   const OfflineAudioContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   if (!AudioContextClass || !OfflineAudioContextClass) throw new Error('Audio tools are not available in this browser');
 
-  const context = new AudioContextClass();
+  const ownsContext = !sharedContext;
+  const context = sharedContext || new AudioContextClass();
   try {
     const decoded = await context.decodeAudioData(await blob.arrayBuffer());
     const length = Math.max(1, Math.ceil(decoded.duration * SAMPLE_RATE));
@@ -159,18 +248,76 @@ async function audioToMono16k(blob) {
     const resampled = await offline.startRendering();
     return resampled.getChannelData(0).slice();
   } finally {
-    await context.close();
+    if (ownsContext) await context.close();
   }
 }
 
 function hasSpeech(audio) {
-  let sum = 0;
-  for (let index = 0; index < audio.length; index += 1) sum += audio[index] * audio[index];
-  return audio.length > 0 && Math.sqrt(sum / audio.length) > 0.006;
+  if (!audio || audio.length === 0) return false;
+  // Short live analyser frames (<= 2048 samples): check frame RMS directly.
+  if (audio.length <= 2048) {
+    let sum = 0;
+    for (let i = 0; i < audio.length; i += 1) sum += audio[i] * audio[i];
+    return Math.sqrt(sum / audio.length) > 0.005;
+  }
+  // Full recorded clips: check 50ms windows so a short word inside a longer clip isn't diluted by silence.
+  const windowSize = Math.max(1, Math.floor(SAMPLE_RATE * 0.05));
+  for (let start = 0; start < audio.length; start += windowSize) {
+    const end = Math.min(audio.length, start + windowSize);
+    let sum = 0;
+    let peak = 0;
+    for (let i = start; i < end; i += 1) {
+      const sample = audio[i];
+      sum += sample * sample;
+      const abs = Math.abs(sample);
+      if (abs > peak) peak = abs;
+    }
+    if (Math.sqrt(sum / (end - start)) > 0.005 && peak > 0.015) return true;
+  }
+  return false;
+}
+
+function normalizeAudio(audio) {
+  if (!audio || audio.length === 0) return audio;
+  const windowSize = Math.floor(SAMPLE_RATE * 0.05);
+  let firstActive = -1;
+  let lastActive = -1;
+  let peak = 0;
+  for (let start = 0; start < audio.length; start += windowSize) {
+    const end = Math.min(audio.length, start + windowSize);
+    let sum = 0;
+    let windowPeak = 0;
+    for (let i = start; i < end; i += 1) {
+      const sample = audio[i];
+      sum += sample * sample;
+      const abs = Math.abs(sample);
+      if (abs > windowPeak) windowPeak = abs;
+    }
+    if (windowPeak > peak) peak = windowPeak;
+    if (Math.sqrt(sum / (end - start)) > 0.004) {
+      if (firstActive === -1) firstActive = start;
+      lastActive = end;
+    }
+  }
+  const pad = Math.floor(SAMPLE_RATE * 0.22);
+  const sliceStart = firstActive === -1 ? 0 : Math.max(0, firstActive - pad);
+  const sliceEnd = lastActive === -1 ? audio.length : Math.min(audio.length, lastActive + pad);
+  const trimmed = audio.slice(sliceStart, sliceEnd);
+  if (peak > 0.01 && peak < 0.75) {
+    const gain = Math.min(10, 0.85 / peak);
+    for (let i = 0; i < trimmed.length; i += 1) {
+      trimmed[i] = Math.max(-1, Math.min(1, trimmed[i] * gain));
+    }
+  }
+  return trimmed;
 }
 
 function shouldFinishClip(elapsed, lastSpeech, now) {
   return elapsed >= CLIP_LENGTH_MS || (elapsed >= 450 && lastSpeech !== null && now - lastSpeech >= SILENCE_MS);
+}
+
+function shouldFinishLiveClip(elapsed, lastSpeech, now) {
+  return elapsed >= LIVE_MAX_CLIP_MS || (elapsed >= 600 && lastSpeech !== null && now - lastSpeech >= LIVE_SILENCE_MS);
 }
 
 function closeAudioMonitor() {
@@ -179,6 +326,31 @@ function closeAudioMonitor() {
   analyser = null;
   captureContext?.close().catch(() => {});
   captureContext = null;
+  decodeContext?.close().catch(() => {});
+  decodeContext = null;
+}
+
+function enqueueClip(blob, currentSession) {
+  if (!active || currentSession !== sessionId) return;
+  if (pendingClips.length >= MAX_PENDING_CLIPS) pendingClips.shift();
+  pendingClips.push(blob);
+  if (!processingQueue) void processQueue(currentSession);
+}
+
+async function processQueue(currentSession) {
+  if (processingQueue) return;
+  processingQueue = true;
+  try {
+    while (active && currentSession === sessionId && pendingClips.length > 0) {
+      const blob = pendingClips.shift();
+      await transcribeClip(blob, currentSession);
+    }
+  } finally {
+    processingQueue = false;
+    if (active && currentSession === sessionId) {
+      status('Listening — say a colour');
+    }
+  }
 }
 
 async function transcribeClip(blob, currentSession) {
@@ -188,21 +360,23 @@ async function transcribeClip(blob, currentSession) {
       diagnostic('audio', 'Recording was empty or too short');
       return;
     }
-    status('Reading recording…');
-    const audio = await audioToMono16k(blob);
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!decodeContext && AudioContextClass) decodeContext = new AudioContextClass();
+    const audio = await audioToMono16k(blob, decodeContext);
     if (!active || currentSession !== sessionId) return;
     if (!hasSpeech(audio)) {
-      diagnostic('audio', 'Only quiet audio detected — try speaking closer');
+      diagnostic('audio', 'Listening quietly…');
       return;
     }
     diagnostic('audio', 'Sound detected');
+    const normalized = normalizeAudio(audio);
 
     stage = 'Loading speech model';
     await getWorker();
     if (!active || currentSession !== sessionId) return;
     stage = 'Recognising speech';
-    status('Recognising speech…');
-    const transcript = await transcribe(audio);
+    status('Recognising…');
+    const transcript = await transcribe(normalized);
     if (!active || currentSession !== sessionId) return;
     const heard = transcript.trim();
     diagnostic('heard', heard || 'No words recognised');
@@ -212,11 +386,6 @@ async function transcribeClip(blob, currentSession) {
     else window.dispatchEvent(new CustomEvent('sound-colour-heard', { detail: { transcript: heard } }));
   } catch (error) {
     fail(`${stage}: ${error?.message || String(error)}`, currentSession);
-  } finally {
-    if (active && currentSession === sessionId) {
-      status('Listening on this device…');
-      segmentTimer = setTimeout(() => recordSegment(currentSession), 0);
-    }
   }
 }
 
@@ -226,7 +395,11 @@ function recordSegment(currentSession) {
   try {
     const segmentRecorder = new MediaRecorder(stream);
     recorder = segmentRecorder;
-    status('Listening — say a colour');
+    if (!processingQueue) status('Listening — say a colour');
+    const started = performance.now();
+    let lastSpeech = null;
+    let heardSpeech = false;
+    const samples = analyser ? new Float32Array(analyser.fftSize) : null;
     segmentRecorder.addEventListener('error', event => {
       fail(`Microphone recording failed: ${event.error?.message || 'Try turning Sound colours on again.'}`, currentSession);
     });
@@ -237,21 +410,28 @@ function recordSegment(currentSession) {
       const clip = new Blob(chunks, { type: segmentRecorder.mimeType });
       chunks = [];
       if (recorder === segmentRecorder) recorder = null;
-      if (active && currentSession === sessionId) void transcribeClip(clip, currentSession);
+      if (active && currentSession === sessionId) {
+        // Immediately start the next recording segment so there is zero blind-spot gap during transcription.
+        recordSegment(currentSession);
+        const monitored = analyser && captureContext?.state === 'running';
+        if (!monitored || heardSpeech) {
+          enqueueClip(clip, currentSession);
+        }
+      }
     }, { once: true });
     segmentRecorder.start();
-    const started = performance.now();
-    let lastSpeech = null;
-    const samples = analyser ? new Float32Array(analyser.fftSize) : null;
     const watch = () => {
       if (!active || currentSession !== sessionId || segmentRecorder.state !== 'recording') return;
       const now = performance.now();
       if (analyser && samples) {
         analyser.getFloatTimeDomainData(samples);
-        if (hasSpeech(samples)) lastSpeech = now;
+        if (hasSpeech(samples)) {
+          lastSpeech = now;
+          heardSpeech = true;
+        }
       }
       const monitored = analyser && captureContext?.state === 'running';
-      if (monitored ? shouldFinishClip(now - started, lastSpeech, now) : now - started >= 1500) {
+      if (monitored ? shouldFinishLiveClip(now - started, lastSpeech, now) : now - started >= 2000) {
         segmentRecorder.stop();
       } else segmentTimer = setTimeout(watch, 50);
     };
@@ -265,6 +445,8 @@ async function startListening() {
   if (active) return;
   active = true;
   const currentSession = ++sessionId;
+  pendingClips.length = 0;
+  processingQueue = false;
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
     fail('This browser does not support microphone recording', currentSession);
     return;
@@ -323,6 +505,8 @@ function stopListening() {
   active = false;
   sessionId += 1;
   clearTimeout(segmentTimer);
+  pendingClips.length = 0;
+  processingQueue = false;
   if (recorder && recorder.state !== 'inactive') recorder.stop();
   recorder = null;
   stream?.getTracks().forEach(track => track.stop());
@@ -343,4 +527,4 @@ function stopListening() {
 window.addEventListener('sound-colour-start', () => { void startListening(); });
 window.addEventListener('sound-colour-stop', stopListening);
 
-export { audioToMono16k, hasSpeech, matchColor, shouldFinishClip };
+export { audioToMono16k, hasSpeech, matchColor, normalizeAudio, shouldFinishClip };
