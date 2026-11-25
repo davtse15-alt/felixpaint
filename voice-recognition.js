@@ -90,7 +90,7 @@ function fail(message, currentSession) {
 
 function getWorker() {
   if (workerReadyPromise) return workerReadyPromise;
-  worker = new Worker(new URL('./voice-worker.js?v=20', import.meta.url), { type: 'module' });
+  worker = new Worker(new URL('./voice-worker.js?v=21', import.meta.url), { type: 'module' });
   workerReadyPromise = new Promise((resolve, reject) => {
     const loadTimeout = setTimeout(() => workerReadyReject?.(new Error('Speech model loading timed out. Check your connection and try again.')), 120000);
     workerReadyResolve = () => { clearTimeout(loadTimeout); resolve(); };

@@ -549,140 +549,103 @@
     const numberValue = isNumberWorksheet ? Number(state.traceItem) : null;
     gtx.save();
 
-    // Clean, large header for iPad readability
+    // Clean, readable worksheet header
     gtx.fillStyle = '#365578';
-    gtx.font = '800 40px "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif';
-    gtx.textAlign = 'center';
+    gtx.font = '800 34px "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif';
+    gtx.textAlign = 'left';
     gtx.textBaseline = 'middle';
     const heading = isNumberWorksheet
       ? `NUMBER  ${state.traceItem}  ·  ${numberWords[numberValue]}`
       : `LETTER  ${state.traceItem}  ${state.traceItem.toLowerCase()}`;
-    gtx.fillText(heading, W / 2, 44);
+    gtx.fillText(heading, 36, 36);
 
-    const marginX = 36, top = 84, gapX = 28;
-    const cardW = (W - marginX * 2 - gapX) / 2;
-    const cardH = H - top - 28;
+    // Legend on the right side of the header
+    gtx.font = '600 20px "Segoe UI", system-ui, sans-serif';
+    gtx.fillStyle = '#536d8a';
+    gtx.textAlign = 'right';
+    gtx.fillText('Start at the green dot · Follow the orange arrows', W - 36, 36);
 
-    const drawCardFrame = (x, y, w, h, badge) => {
-      gtx.beginPath();
-      gtx.roundRect(x, y, w, h, 28);
-      gtx.fillStyle = 'rgba(247, 250, 255, .74)';
-      gtx.fill();
-      gtx.lineWidth = 3;
-      gtx.setLineDash([8, 10]);
-      gtx.strokeStyle = 'rgba(116, 154, 202, .42)';
-      gtx.stroke();
-      gtx.setLineDash([]);
-      if (badge) {
-        gtx.fillStyle = 'rgba(66, 98, 138, .62)';
-        gtx.font = '700 24px "Segoe UI", sans-serif';
-        gtx.textAlign = 'left';
-        gtx.textBaseline = 'top';
-        gtx.fillText(badge, x + 28, y + 20);
-      }
-    };
+    const cols = 3;
+    const rows = 2;
+    const marginX = 32;
+    const top = 66;
+    const bottomMargin = 22;
+    const gapX = 20;
+    const gapY = 18;
+    const cardW = (W - marginX * 2 - gapX * (cols - 1)) / cols;
+    const cardH = (H - top - bottomMargin - gapY * (rows - 1)) / rows;
+    const glyphSize = 184;
 
-    const drawHandwritingLines = (x, y, w) => {
-      const left = x + 36;
-      const right = x + w - 36;
-      const skyY = y + 156;
-      const midY = y + 234;
-      const baseY = y + 462;
-      gtx.lineWidth = 3;
-      gtx.strokeStyle = 'rgba(92, 148, 224, .3)';
-      gtx.beginPath();
-      gtx.moveTo(left, skyY); gtx.lineTo(right, skyY);
-      gtx.stroke();
+    for (let row = 0; row < rows; row++) {
+      const char = isNumberWorksheet
+        ? state.traceItem
+        : (row === 0 ? state.traceItem : state.traceItem.toLowerCase());
 
-      gtx.setLineDash([12, 12]);
-      gtx.strokeStyle = 'rgba(116, 148, 190, .36)';
-      gtx.beginPath();
-      gtx.moveTo(left, midY); gtx.lineTo(right, midY);
-      gtx.stroke();
-      gtx.setLineDash([]);
+      for (let col = 0; col < cols; col++) {
+        const x = marginX + col * (cardW + gapX);
+        const y = top + row * (cardH + gapY);
+        const isModelBox = col === 0 && (isNumberWorksheet ? row === 0 : true);
 
-      gtx.lineWidth = 4;
-      gtx.strokeStyle = 'rgba(92, 148, 224, .44)';
-      gtx.beginPath();
-      gtx.moveTo(left, baseY); gtx.lineTo(right, baseY);
-      gtx.stroke();
-      return baseY;
-    };
-
-    const drawGiantTraceChar = (char, x, y, w, baseY, fontSize) => {
-      gtx.textAlign = 'center';
-      gtx.textBaseline = 'alphabetic';
-      gtx.font = `700 ${fontSize}px "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif`;
-      gtx.fillStyle = 'rgba(69, 130, 214, .11)';
-      gtx.fillText(char, x + w / 2, baseY);
-      gtx.lineWidth = 10;
-      gtx.lineJoin = 'round';
-      gtx.lineCap = 'round';
-      gtx.setLineDash([12, 16]);
-      gtx.strokeStyle = 'rgba(52, 120, 214, .72)';
-      gtx.strokeText(char, x + w / 2, baseY);
-      gtx.setLineDash([]);
-    };
-
-    const leftX = marginX;
-    const rightX = marginX + cardW + gapX;
-
-    if (isNumberWorksheet) {
-      drawCardFrame(leftX, top, cardW, cardH, 'TRACE');
-      const baseY = drawHandwritingLines(leftX, top, cardW);
-      drawGiantTraceChar(state.traceItem, leftX, top, cardW, baseY, 440);
-
-      drawCardFrame(rightX, top, cardW, cardH, 'COUNT & COLOUR');
-      gtx.textAlign = 'center';
-      gtx.textBaseline = 'middle';
-      gtx.fillStyle = '#365578';
-      gtx.font = '800 68px "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif';
-      gtx.fillText(numberWords[numberValue], rightX + cardW / 2, top + 124);
-
-      if (numberValue === 0) {
+        // Card background
         gtx.beginPath();
-        gtx.arc(rightX + cardW / 2, top + 360, 110, 0, Math.PI * 2);
-        gtx.lineWidth = 8;
-        gtx.setLineDash([12, 14]);
-        gtx.strokeStyle = 'rgba(116, 154, 202, .45)';
+        gtx.roundRect(x, y, cardW, cardH, 20);
+        gtx.fillStyle = isModelBox ? 'rgba(240, 247, 255, .92)' : 'rgba(248, 251, 255, .68)';
+        gtx.fill();
+        gtx.lineWidth = isModelBox ? 3 : 2.5;
+        gtx.setLineDash(isModelBox ? [] : [7, 9]);
+        gtx.strokeStyle = isModelBox ? 'rgba(72, 134, 214, .48)' : 'rgba(124, 158, 202, .36)';
         gtx.stroke();
         gtx.setLineDash([]);
-        gtx.fillStyle = 'rgba(66, 98, 138, .55)';
-        gtx.font = '700 34px "Segoe UI", sans-serif';
-        gtx.fillText('Zero dots', rightX + cardW / 2, top + 360);
-      } else {
-        const cols = numberValue <= 3 ? numberValue : numberValue <= 6 ? 3 : numberValue <= 8 ? 4 : 3;
-        const rows = Math.ceil(numberValue / cols);
-        const radius = numberValue <= 4 ? 54 : numberValue <= 6 ? 48 : 44;
-        const stepX = radius * 2.55;
-        const stepY = radius * 2.55;
-        const startY = top + 360 - ((rows - 1) * stepY) / 2;
-        for (let i = 0; i < numberValue; i++) {
-          const row = Math.floor(i / cols);
-          const itemsInRow = row === rows - 1 ? numberValue - row * cols : cols;
-          const col = i % cols;
-          const rowStartX = rightX + cardW / 2 - ((itemsInRow - 1) * stepX) / 2;
-          const cx = rowStartX + col * stepX;
-          const cy = startY + row * stepY;
-          gtx.beginPath();
-          gtx.arc(cx, cy, radius, 0, Math.PI * 2);
-          gtx.fillStyle = 'rgba(69, 130, 214, .12)';
-          gtx.fill();
-          gtx.lineWidth = 6;
-          gtx.setLineDash([9, 11]);
-          gtx.strokeStyle = 'rgba(52, 120, 214, .68)';
-          gtx.stroke();
-          gtx.setLineDash([]);
+
+        // Handwriting guide lines (sky, dashed midline, baseline)
+        const skyY = y + 40;
+        const midY = skyY + glyphSize * 0.5;
+        const baseY = skyY + glyphSize;
+        const lineLeft = x + 22;
+        const lineRight = x + cardW - 22;
+
+        gtx.lineWidth = 2;
+        gtx.strokeStyle = 'rgba(92, 148, 224, .28)';
+        gtx.beginPath();
+        gtx.moveTo(lineLeft, skyY); gtx.lineTo(lineRight, skyY);
+        gtx.stroke();
+
+        gtx.setLineDash([9, 10]);
+        gtx.strokeStyle = 'rgba(116, 148, 190, .34)';
+        gtx.beginPath();
+        gtx.moveTo(lineLeft, midY); gtx.lineTo(lineRight, midY);
+        gtx.stroke();
+        gtx.setLineDash([]);
+
+        gtx.lineWidth = 3;
+        gtx.strokeStyle = 'rgba(92, 148, 224, .42)';
+        gtx.beginPath();
+        gtx.moveTo(lineLeft, baseY); gtx.lineTo(lineRight, baseY);
+        gtx.stroke();
+
+        // Subtle label on model boxes
+        if (isModelBox) {
+          gtx.fillStyle = 'rgba(42, 108, 206, .68)';
+          gtx.font = '700 16px "Segoe UI", system-ui, sans-serif';
+          gtx.textAlign = 'left';
+          gtx.textBaseline = 'top';
+          gtx.fillText(isNumberWorksheet ? 'TRACE' : (row === 0 ? 'BIG' : 'small'), x + 18, y + 12);
+        }
+
+        // Draw vector stroke-order glyph with arrows
+        if (window.TRACE_STROKES?.drawTraceGlyph) {
+          window.TRACE_STROKES.drawTraceGlyph(
+            gtx,
+            char,
+            { x: x + (cardW - glyphSize) / 2, y: skyY, size: glyphSize },
+            {
+              showArrows: true,
+              showNumbers: isModelBox,
+              showStartDots: true
+            }
+          );
         }
       }
-    } else {
-      drawCardFrame(leftX, top, cardW, cardH, 'BIG');
-      const leftBaseY = drawHandwritingLines(leftX, top, cardW);
-      drawGiantTraceChar(state.traceItem, leftX, top, cardW, leftBaseY, 430);
-
-      drawCardFrame(rightX, top, cardW, cardH, 'small');
-      const rightBaseY = drawHandwritingLines(rightX, top, cardW);
-      drawGiantTraceChar(state.traceItem.toLowerCase(), rightX, top, cardW, rightBaseY, 430);
     }
 
     gtx.restore();
