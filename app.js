@@ -52,6 +52,17 @@
     '#8b5b3e', '#89909d', '#65c8ff', '#1d4f91', '#9eea5d',
     '#147f55', '#ffbd91', '#ff7898', '#7b465e', '#d6b58c', '#4b0082', '#8b5cf6'
   ];
+  const learnColors = [
+    { name: 'Red', color: '#ed3349' },
+    { name: 'Orange', color: '#ff8a24' },
+    { name: 'Yellow', color: '#ffd43b' },
+    { name: 'Green', color: '#42bd62' },
+    { name: 'Blue', color: '#3478f6' },
+    { name: 'Purple', color: '#8b5cf6' },
+    { name: 'Pink', color: '#ff7898' },
+    { name: 'Black', color: '#111111' }
+  ];
+  const numberWords = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -401,16 +412,33 @@
   function updateColorUI() {
     const swatch = $('#activeSwatch');
     const label = $('#colorSummaryText');
+    const learnSwatch = $('#learnActiveSwatch');
+    const learnLabel = $('#learnColorSummaryText');
+    let bg = state.solid;
     if (state.mode === 'solid') {
-      swatch.style.background = state.solid;
+      bg = state.solid;
+      swatch.style.background = bg;
       label.textContent = state.solid.toUpperCase();
+      if (learnLabel) learnLabel.textContent = 'More colours';
     } else if (state.mode === 'rainbow') {
-      swatch.style.background = gradientCss(presets[0].colors);
+      bg = gradientCss(presets[0].colors);
+      swatch.style.background = bg;
       label.textContent = 'Rainbow';
+      if (learnLabel) learnLabel.textContent = 'Rainbow';
     } else {
-      swatch.style.background = gradientCss();
+      bg = gradientCss();
+      swatch.style.background = bg;
       label.textContent = state.style === 'bands' ? 'Color bands' : 'Color blend';
+      if (learnLabel) learnLabel.textContent = state.style === 'bands' ? 'Color bands' : 'Color blend';
     }
+    if (learnSwatch) learnSwatch.style.background = bg;
+    $$('.learn-swatch').forEach(button => {
+      const active = button.dataset.mode === 'rainbow'
+        ? state.mode === 'rainbow'
+        : state.mode === 'solid' && button.dataset.color === state.solid.toLowerCase();
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active);
+    });
     $$('.gradient-section').forEach(section => section.style.opacity = state.mode === 'solid' ? '.55' : '1');
   }
 
@@ -511,43 +539,152 @@
     const stampNames = { 'toy-kit': 'Toy drum kit', snare: 'Snare drum', bongos: 'Bongo drums', bass: 'Bass drum', tom: 'Tom drum' };
     const tool = state.stamp ? `${stampNames[state.stamp] || state.stamp} Stamp` : state.tool[0].toUpperCase() + state.tool.slice(1);
     const mode = state.mode[0].toUpperCase() + state.mode.slice(1);
-    $('#statusText').textContent = state.appMode === 'learn' ? (/^[0-9]$/.test(state.traceItem) ? 'Number worksheet · 0–9' : `Letter worksheet · ${state.traceItem}`) : `${tool} · ${mode}${state.symmetry === 'none' ? '' : ' · Symmetry'}`;
+    $('#statusText').textContent = state.appMode === 'learn'
+      ? (/^[0-9]$/.test(state.traceItem) ? `Number ${state.traceItem} · ${numberWords[Number(state.traceItem)]}` : `Letter ${state.traceItem} ${state.traceItem.toLowerCase()}`)
+      : `${tool} · ${mode}${state.symmetry === 'none' ? '' : ' · Symmetry'}`;
   }
 
   function drawTraceWorksheet() {
     const isNumberWorksheet = /^[0-9]$/.test(state.traceItem);
+    const numberValue = isNumberWorksheet ? Number(state.traceItem) : null;
     gtx.save();
-    gtx.fillStyle = '#425d7b';
-    gtx.font = '600 31px "Segoe UI", sans-serif';
-    gtx.textAlign = 'left';
-    gtx.textBaseline = 'middle';
-    gtx.fillText(isNumberWorksheet ? 'NUMBER TRACING  ·  0–9' : `LETTER TRACING  ·  ${state.traceItem}`, 48, 34);
-    gtx.font = '20px "Segoe UI", sans-serif';
-    gtx.fillStyle = '#7b8795';
-    gtx.fillText('Name', 760, 34);
-    gtx.beginPath(); gtx.moveTo(820, 44); gtx.lineTo(1010, 44); gtx.moveTo(1032, 44); gtx.lineTo(1080, 44); gtx.strokeStyle = '#c5d0dd'; gtx.lineWidth = 2; gtx.stroke();
-    gtx.font = '18px "Segoe UI", sans-serif'; gtx.fillText('Date', 1018, 34);
 
-    const marginX = 36, top = 70, gapX = 12, gapY = 12;
-    const cellW = (W - marginX * 2 - gapX * 4) / 5;
-    const cellH = (H - top - 30 - gapY) / 2;
-    for (let n = 0; n < 10; n++) {
-      const col = n % 5, row = Math.floor(n / 5);
-      const guideCharacter = isNumberWorksheet ? String(n) : state.traceItem;
-      const x = marginX + col * (cellW + gapX), y = top + row * (cellH + gapY);
-      gtx.beginPath(); gtx.roundRect(x, y, cellW, cellH, 18);
-      gtx.fillStyle = 'rgba(246, 250, 255, .48)'; gtx.fill();
-      gtx.lineWidth = 2.5; gtx.setLineDash([5, 8]); gtx.strokeStyle = 'rgba(104, 145, 193, .36)'; gtx.stroke(); gtx.setLineDash([]);
-      gtx.textAlign = 'center'; gtx.textBaseline = 'middle';
-      gtx.font = '700 166px "Arial Rounded MT Bold", "Trebuchet MS", sans-serif';
-      gtx.lineWidth = 8; gtx.lineJoin = 'round'; gtx.setLineDash([5, 12]);
-      gtx.strokeStyle = 'rgba(69, 130, 214, .62)';
-      gtx.strokeText(guideCharacter, x + cellW / 2, y + cellH * .51);
-      gtx.setLineDash([]); gtx.fillStyle = 'rgba(69, 130, 214, .12)';
-      gtx.fillText(guideCharacter, x + cellW / 2, y + cellH * .51);
-      gtx.beginPath(); gtx.moveTo(x + 20, y + cellH - 34); gtx.lineTo(x + cellW - 20, y + cellH - 34);
-      gtx.strokeStyle = 'rgba(130, 154, 181, .4)'; gtx.lineWidth = 2; gtx.setLineDash([4, 9]); gtx.stroke(); gtx.setLineDash([]);
+    // Clean, large header for iPad readability
+    gtx.fillStyle = '#365578';
+    gtx.font = '800 40px "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif';
+    gtx.textAlign = 'center';
+    gtx.textBaseline = 'middle';
+    const heading = isNumberWorksheet
+      ? `NUMBER  ${state.traceItem}  ·  ${numberWords[numberValue]}`
+      : `LETTER  ${state.traceItem}  ${state.traceItem.toLowerCase()}`;
+    gtx.fillText(heading, W / 2, 44);
+
+    const marginX = 36, top = 84, gapX = 28;
+    const cardW = (W - marginX * 2 - gapX) / 2;
+    const cardH = H - top - 28;
+
+    const drawCardFrame = (x, y, w, h, badge) => {
+      gtx.beginPath();
+      gtx.roundRect(x, y, w, h, 28);
+      gtx.fillStyle = 'rgba(247, 250, 255, .74)';
+      gtx.fill();
+      gtx.lineWidth = 3;
+      gtx.setLineDash([8, 10]);
+      gtx.strokeStyle = 'rgba(116, 154, 202, .42)';
+      gtx.stroke();
+      gtx.setLineDash([]);
+      if (badge) {
+        gtx.fillStyle = 'rgba(66, 98, 138, .62)';
+        gtx.font = '700 24px "Segoe UI", sans-serif';
+        gtx.textAlign = 'left';
+        gtx.textBaseline = 'top';
+        gtx.fillText(badge, x + 28, y + 20);
+      }
+    };
+
+    const drawHandwritingLines = (x, y, w) => {
+      const left = x + 36;
+      const right = x + w - 36;
+      const skyY = y + 156;
+      const midY = y + 234;
+      const baseY = y + 462;
+      gtx.lineWidth = 3;
+      gtx.strokeStyle = 'rgba(92, 148, 224, .3)';
+      gtx.beginPath();
+      gtx.moveTo(left, skyY); gtx.lineTo(right, skyY);
+      gtx.stroke();
+
+      gtx.setLineDash([12, 12]);
+      gtx.strokeStyle = 'rgba(116, 148, 190, .36)';
+      gtx.beginPath();
+      gtx.moveTo(left, midY); gtx.lineTo(right, midY);
+      gtx.stroke();
+      gtx.setLineDash([]);
+
+      gtx.lineWidth = 4;
+      gtx.strokeStyle = 'rgba(92, 148, 224, .44)';
+      gtx.beginPath();
+      gtx.moveTo(left, baseY); gtx.lineTo(right, baseY);
+      gtx.stroke();
+      return baseY;
+    };
+
+    const drawGiantTraceChar = (char, x, y, w, baseY, fontSize) => {
+      gtx.textAlign = 'center';
+      gtx.textBaseline = 'alphabetic';
+      gtx.font = `700 ${fontSize}px "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif`;
+      gtx.fillStyle = 'rgba(69, 130, 214, .11)';
+      gtx.fillText(char, x + w / 2, baseY);
+      gtx.lineWidth = 10;
+      gtx.lineJoin = 'round';
+      gtx.lineCap = 'round';
+      gtx.setLineDash([12, 16]);
+      gtx.strokeStyle = 'rgba(52, 120, 214, .72)';
+      gtx.strokeText(char, x + w / 2, baseY);
+      gtx.setLineDash([]);
+    };
+
+    const leftX = marginX;
+    const rightX = marginX + cardW + gapX;
+
+    if (isNumberWorksheet) {
+      drawCardFrame(leftX, top, cardW, cardH, 'TRACE');
+      const baseY = drawHandwritingLines(leftX, top, cardW);
+      drawGiantTraceChar(state.traceItem, leftX, top, cardW, baseY, 440);
+
+      drawCardFrame(rightX, top, cardW, cardH, 'COUNT & COLOUR');
+      gtx.textAlign = 'center';
+      gtx.textBaseline = 'middle';
+      gtx.fillStyle = '#365578';
+      gtx.font = '800 68px "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif';
+      gtx.fillText(numberWords[numberValue], rightX + cardW / 2, top + 124);
+
+      if (numberValue === 0) {
+        gtx.beginPath();
+        gtx.arc(rightX + cardW / 2, top + 360, 110, 0, Math.PI * 2);
+        gtx.lineWidth = 8;
+        gtx.setLineDash([12, 14]);
+        gtx.strokeStyle = 'rgba(116, 154, 202, .45)';
+        gtx.stroke();
+        gtx.setLineDash([]);
+        gtx.fillStyle = 'rgba(66, 98, 138, .55)';
+        gtx.font = '700 34px "Segoe UI", sans-serif';
+        gtx.fillText('Zero dots', rightX + cardW / 2, top + 360);
+      } else {
+        const cols = numberValue <= 3 ? numberValue : numberValue <= 6 ? 3 : numberValue <= 8 ? 4 : 3;
+        const rows = Math.ceil(numberValue / cols);
+        const radius = numberValue <= 4 ? 54 : numberValue <= 6 ? 48 : 44;
+        const stepX = radius * 2.55;
+        const stepY = radius * 2.55;
+        const startY = top + 360 - ((rows - 1) * stepY) / 2;
+        for (let i = 0; i < numberValue; i++) {
+          const row = Math.floor(i / cols);
+          const itemsInRow = row === rows - 1 ? numberValue - row * cols : cols;
+          const col = i % cols;
+          const rowStartX = rightX + cardW / 2 - ((itemsInRow - 1) * stepX) / 2;
+          const cx = rowStartX + col * stepX;
+          const cy = startY + row * stepY;
+          gtx.beginPath();
+          gtx.arc(cx, cy, radius, 0, Math.PI * 2);
+          gtx.fillStyle = 'rgba(69, 130, 214, .12)';
+          gtx.fill();
+          gtx.lineWidth = 6;
+          gtx.setLineDash([9, 11]);
+          gtx.strokeStyle = 'rgba(52, 120, 214, .68)';
+          gtx.stroke();
+          gtx.setLineDash([]);
+        }
+      }
+    } else {
+      drawCardFrame(leftX, top, cardW, cardH, 'BIG');
+      const leftBaseY = drawHandwritingLines(leftX, top, cardW);
+      drawGiantTraceChar(state.traceItem, leftX, top, cardW, leftBaseY, 430);
+
+      drawCardFrame(rightX, top, cardW, cardH, 'small');
+      const rightBaseY = drawHandwritingLines(rightX, top, cardW);
+      drawGiantTraceChar(state.traceItem.toLowerCase(), rightX, top, cardW, rightBaseY, 430);
     }
+
     gtx.restore();
   }
 
@@ -563,6 +700,9 @@
     state.redo = [];
     updateHistoryButtons();
     state.appMode = mode;
+    if (mode === 'learn' && (state.stamp || state.tool === 'eraser')) {
+      setTool('brush');
+    }
     $('.app-shell').classList.toggle('learning', mode === 'learn');
     $('.paint-ribbon').hidden = mode === 'learn';
     $('.learn-ribbon').hidden = mode !== 'learn';
@@ -571,7 +711,7 @@
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', active);
     });
-    $('#emptyHint').classList.toggle('hidden', mode === 'learn' || !state.hasDrawn);
+    $('#emptyHint').classList.toggle('hidden', mode === 'learn' || state.hasDrawn);
     toggleColorPanel(false);
     drawGuides();
     updateStatus();
@@ -598,8 +738,15 @@
   function toggleColorPanel(force) {
     const panel = $('#colorPanel');
     const open = force ?? panel.hidden;
+    if (open) {
+      const activeRibbon = state.appMode === 'learn' ? $('.learn-ribbon') : $('.paint-ribbon');
+      if (activeRibbon) {
+        panel.style.top = `${Math.round(activeRibbon.getBoundingClientRect().bottom + 8)}px`;
+      }
+    }
     panel.hidden = !open;
     $('#colorPanelBtn').setAttribute('aria-expanded', open);
+    $('#learnColorPanelBtn')?.setAttribute('aria-expanded', open);
   }
 
   function setSoundMode(enabled) {
@@ -750,18 +897,51 @@
     traceItems.forEach((item, index) => {
       if (index === 0 || index === 26) {
         const group = document.createElement('optgroup');
-        group.label = index === 0 ? 'U.S. alphabet · uppercase' : 'U.S. numbers';
+        group.label = index === 0 ? 'Letters (A–Z)' : 'Numbers (0–9)';
         traceSelect.append(group);
       }
       const option = document.createElement('option');
       option.value = item;
-      option.textContent = item;
+      option.textContent = /^[A-Z]$/.test(item) ? `${item} ${item.toLowerCase()}` : item;
       traceSelect.lastElementChild.append(option);
     });
     traceSelect.addEventListener('change', () => { state.traceItem = traceSelect.value; clearTrace(); drawGuides(); updateStatus(); });
     $('#previousItem').addEventListener('click', () => moveTraceItem(-1));
     $('#nextItem').addEventListener('click', () => moveTraceItem(1));
     $('#clearTrace').addEventListener('click', clearTrace);
+
+    const learnSwatchTarget = $('#learnSwatches');
+    if (learnSwatchTarget) {
+      learnColors.forEach(({ name, color }) => {
+        const button = document.createElement('button');
+        button.className = 'learn-swatch';
+        button.dataset.color = color.toLowerCase();
+        button.style.background = color;
+        button.title = name;
+        button.setAttribute('aria-label', `${name} colour`);
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', () => {
+          state.solid = color;
+          $('#solidColor').value = color;
+          syncSpectrumFromSolid();
+          setMode('solid');
+          if (state.stamp || state.tool === 'eraser') setTool('brush');
+        });
+        learnSwatchTarget.append(button);
+      });
+      const rainbowBtn = document.createElement('button');
+      rainbowBtn.className = 'learn-swatch rainbow';
+      rainbowBtn.dataset.mode = 'rainbow';
+      rainbowBtn.title = 'Rainbow';
+      rainbowBtn.setAttribute('aria-label', 'Rainbow colour');
+      rainbowBtn.setAttribute('aria-pressed', 'false');
+      rainbowBtn.addEventListener('click', () => {
+        setMode('rainbow');
+        if (state.stamp || state.tool === 'eraser') setTool('brush');
+      });
+      learnSwatchTarget.append(rainbowBtn);
+    }
+
     $$('.tool').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
     $$('.stamp').forEach(button => button.addEventListener('click', () => setStamp(button.dataset.stamp)));
     $$('.mode').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
@@ -784,6 +964,7 @@
     $('#solidColor').addEventListener('input', event => { state.solid = event.target.value; syncSpectrumFromSolid(); setMode('solid'); });
     $('#repeatRange').addEventListener('input', event => { state.repeat = Number(event.target.value); });
     $('#colorPanelBtn').addEventListener('click', () => toggleColorPanel());
+    $('#learnColorPanelBtn')?.addEventListener('click', () => toggleColorPanel());
     $('#soundBtn').addEventListener('click', () => setSoundMode(!state.voiceEnabled));
     $('#fullscreenBtn').addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', updateFullscreenButton);
@@ -902,7 +1083,12 @@
     });
 
     document.addEventListener('pointerdown', event => {
-      if (!$('#colorPanel').hidden && !$('#colorPanel').contains(event.target) && !$('#colorPanelBtn').contains(event.target)) toggleColorPanel(false);
+      if (
+        !$('#colorPanel').hidden &&
+        !$('#colorPanel').contains(event.target) &&
+        !$('#colorPanelBtn').contains(event.target) &&
+        !$('#learnColorPanelBtn')?.contains(event.target)
+      ) toggleColorPanel(false);
     });
     document.addEventListener('keydown', event => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); (event.shiftKey ? $('#redoBtn') : $('#undoBtn')).click(); }

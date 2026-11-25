@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Flex Paint</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
   <main class="app-shell">
@@ -96,12 +96,21 @@
 
     <section class="ribbon learn-ribbon" aria-label="Learning controls" hidden>
       <div class="learn-controls">
-        <label for="traceItem">Choose a letter or number worksheet</label>
-        <select id="traceItem" aria-label="Choose a U.S. letter or number"></select>
-        <button class="learn-nav" id="previousItem" aria-label="Previous letter or number">←</button>
-        <button class="learn-nav" id="nextItem" aria-label="Next letter or number">→</button>
-        <button class="clear-button" id="clearTrace">Try again</button>
-        <span class="learn-tip">Follow the dotted lines with your finger or a stylus.</span>
+        <div class="learn-picker-group" role="group" aria-label="Choose a letter or number">
+          <button class="learn-nav" id="previousItem" aria-label="Previous letter or number">←</button>
+          <select id="traceItem" aria-label="Choose a letter or number"></select>
+          <button class="learn-nav" id="nextItem" aria-label="Next letter or number">→</button>
+          <button class="clear-button learn-clear" id="clearTrace">Try again</button>
+        </div>
+        <div class="divider" aria-hidden="true"></div>
+        <div class="learn-color-group" role="group" aria-label="Tracing colours">
+          <div class="learn-swatches" id="learnSwatches" aria-label="Quick colours"></div>
+          <button class="color-summary learn-color-btn" id="learnColorPanelBtn" aria-expanded="false" aria-controls="colorPanel">
+            <span class="color-swatch" id="learnActiveSwatch"></span>
+            <span id="learnColorSummaryText">More colours</span>
+            <span aria-hidden="true">⌄</span>
+          </button>
+        </div>
       </div>
     </section>
 
@@ -170,7 +179,7 @@
   </main>
 
   <details class="sound-check" id="soundCheck" hidden open>
-    <summary>Sound check · v17</summary>
+    <summary>Sound check · v18</summary>
     <dl>
       <dt>Microphone</dt><dd id="soundMicrophone">Waiting</dd>
       <dt>Speech model</dt><dd id="soundModel">Waiting</dd>
@@ -181,7 +190,7 @@
     <p id="soundError" role="alert" hidden></p>
   </details>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=17"></script>
-  <script type="module" src="voice-recognition.js?v=17"></script>
+  <script src="app.js?v=18"></script>
+  <script type="module" src="voice-recognition.js?v=18"></script>
 </body>
 </html>
