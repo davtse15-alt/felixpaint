@@ -260,6 +260,27 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .quick-color { width: 42px; height: 38px; }
 }
 
+@media (max-height: 480px) and (pointer: coarse) {
+  .app-shell { grid-template-rows: 40px auto 1fr; }
+  .titlebar { padding: 4px max(10px, env(safe-area-inset-right)) 4px max(10px, env(safe-area-inset-left)); }
+  .app-mode { min-height: 30px; padding: 0 10px; font-size: 13px; }
+  .icon-button, .clear-button, .mini-button, .lock-button, .fullscreen-button, .sound-button { min-height: 34px; }
+  .ribbon { min-height: 68px; padding: 4px 8px; }
+  .learn-ribbon { min-height: 54px; padding: 4px 10px; }
+  .tool { width: 54px; height: 58px; gap: 2px; }
+  .tool span { font-size: 26px; line-height: 28px; }
+  .tool small { font-size: 10px; }
+  .stamp { height: 40px; }
+  .stamp svg { width: 32px; height: 26px; }
+  .mode, .sym, .style, .color-summary { min-height: 34px; height: 34px; font-size: 12px; }
+  .learn-controls select, .learn-nav, .learn-clear, .learn-color-btn { height: 40px; min-height: 40px; font-size: 18px; }
+  .learn-swatch { width: 32px; height: 32px; }
+  .color-panel { top: 112px; max-height: calc(100dvh - 120px); overflow-y: auto; }
+  .canvas-stage { padding: 6px 10px; }
+  .canvas-frame { width: min(100%, calc((100dvh - 122px) * 16 / 9)); }
+  .statusbar { display: none; }
+}
+
 @media (display-mode: fullscreen), (display-mode: standalone) {
   .fullscreen-button { display: none; }
 }
