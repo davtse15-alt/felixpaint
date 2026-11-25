@@ -1135,6 +1135,14 @@
   drawGuides();
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !reloaded) {
+        reloaded = true;
+        location.reload();
+      }
+    });
     addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
   }
 })();
